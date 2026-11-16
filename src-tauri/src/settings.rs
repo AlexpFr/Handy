@@ -1859,6 +1859,23 @@ mod tests {
     }
 
     #[test]
+    fn thinking_is_written_as_its_api_value() {
+        for (written, thinking) in [
+            ("default", PostProcessThinking::Default),
+            ("off", PostProcessThinking::Off),
+            ("low", PostProcessThinking::Low),
+            ("medium", PostProcessThinking::Medium),
+            ("high", PostProcessThinking::High),
+            ("xhigh", PostProcessThinking::XHigh),
+            ("max", PostProcessThinking::Max),
+        ] {
+            let read: PostProcessThinking =
+                serde_json::from_value(serde_json::json!(written)).unwrap();
+            assert_eq!(read, thinking);
+        }
+    }
+
+    #[test]
     fn salvage_of_non_object_store_falls_back_to_defaults() {
         for stored in [
             serde_json::json!("corrupt"),

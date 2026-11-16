@@ -1154,7 +1154,7 @@ mod tests {
     };
     use crate::settings::{
         get_default_settings, AppSettings, OverlayStyle, PostProcessApiFormat,
-        PostProcessPromptCache,
+        PostProcessPromptCache, PostProcessThinking,
     };
     use serde_json::{json, Value};
     use std::future;
@@ -1314,6 +1314,7 @@ mod tests {
                 .api_format = PostProcessApiFormat::Anthropic;
             settings.post_process_transcription_tag = "transcript".to_string();
             settings.post_process_prompt_cache = PostProcessPromptCache::OneHour;
+            settings.post_process_thinking = PostProcessThinking::High;
         });
         assert_eq!(
             request,
@@ -1326,6 +1327,7 @@ mod tests {
                     "cache_control": { "type": "ephemeral", "ttl": "1h" },
                 }],
                 "messages": [{ "role": "user", "content": "<transcript>hello</transcript>" }],
+                "output_config": { "effort": "high" },
             })
         );
     }
