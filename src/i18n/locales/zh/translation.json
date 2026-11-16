@@ -666,6 +666,32 @@
           "placeholderWithOptions": "搜索或选择模型",
           "placeholderNoOptions": "输入模型名称",
           "refreshModels": "刷新模型"
+        },
+        "thinking": {
+          "title": "思考",
+          "description": "设置模型在回答前是否思考，以及投入多少精力。“模型默认”不作任何要求。思考会增加延迟和费用，而整理转录内容很少需要它。并非每个模型都接受所有取值：模型拒绝的取值会导致请求失败。",
+          "options": {
+            "default": "模型默认",
+            "off": "关闭",
+            "low": "低",
+            "medium": "中",
+            "high": "高",
+            "xhigh": "极高",
+            "max": "最大"
+          }
+        },
+        "promptCache": {
+          "title": "提示词缓存",
+          "description": "请求提供商将提示词的指令在其缓存中保留这么长时间。只有不含 ${output} 的提示词才会被缓存。缓存的费用高于发送一次指令，且保留越久越贵：只有在转录接连进行时才划算。",
+          "options": {
+            "off": "关闭",
+            "fiveMinutes": "5 分钟",
+            "oneHour": "1 小时"
+          }
+        },
+        "maxTokens": {
+          "title": "最大输出 Token 数",
+          "description": "模型为一次转录最多可输出的 Token 数，包含思考部分。达到上限的回复会被截断，Handy 会将其丢弃，而不是粘贴不完整的转录。每个模型都有自己的上限：超过上限的取值会导致请求失败。"
         }
       },
       "prompts": {
@@ -687,7 +713,12 @@
         "createPrompt": "创建提示词",
         "cancel": "取消",
         "selectToEdit": "选择上方的提示词以查看和编辑其详细信息。",
-        "createFirst": "点击上方的「创建新提示词」来创建您的第一个后处理提示词。"
+        "createFirst": "点击上方的「创建新提示词」来创建您的第一个后处理提示词。",
+        "transcriptionTag": {
+          "title": "转录标签",
+          "description": "Handy 将转录与提示词分开发送时，用来包裹转录的标签名称：填写 transcript 会发送 <transcript>…</transcript>。这可以避免模型回答转录内容而不是整理它。留空则不添加任何内容。",
+          "placeholder": "无标签"
+        }
       }
     },
     "history": {

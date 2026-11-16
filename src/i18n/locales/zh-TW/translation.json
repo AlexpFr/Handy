@@ -666,6 +666,32 @@
           "placeholderWithOptions": "搜尋或選擇模型",
           "placeholderNoOptions": "輸入模型名稱",
           "refreshModels": "重新整理模型"
+        },
+        "thinking": {
+          "title": "思考",
+          "description": "設定模型在回答前是否思考，以及投入多少心力。「模型預設」不提出任何要求。思考會增加延遲與費用，而整理轉錄內容很少需要它。並非每個模型都接受所有設定值：模型拒絕的設定值會導致請求失敗。",
+          "options": {
+            "default": "模型預設",
+            "off": "關閉",
+            "low": "低",
+            "medium": "中",
+            "high": "高",
+            "xhigh": "極高",
+            "max": "最大"
+          }
+        },
+        "promptCache": {
+          "title": "提示詞快取",
+          "description": "請求供應商將提示詞的指令在其快取中保留這段時間。只有不含 ${output} 的提示詞才會被快取。快取的費用高於傳送一次指令，且保留越久越貴：只有在轉錄接連進行時才划算。",
+          "options": {
+            "off": "關閉",
+            "fiveMinutes": "5 分鐘",
+            "oneHour": "1 小時"
+          }
+        },
+        "maxTokens": {
+          "title": "最大輸出 Token 數",
+          "description": "模型為一次轉錄最多可輸出的 Token 數，包含思考部分。達到上限的回覆會被截斷，Handy 會將其捨棄，而不是貼上不完整的轉錄。每個模型都有自己的上限：超過上限的設定值會導致請求失敗。"
         }
       },
       "prompts": {
@@ -687,7 +713,12 @@
         "createPrompt": "建立提示詞",
         "cancel": "取消",
         "selectToEdit": "選擇上方的提示詞以檢視和編輯其詳細資訊",
-        "createFirst": "點選上方的「建立新提示詞」來建立您的第一個後處理提示詞"
+        "createFirst": "點選上方的「建立新提示詞」來建立您的第一個後處理提示詞",
+        "transcriptionTag": {
+          "title": "轉錄標籤",
+          "description": "Handy 將轉錄與提示詞分開傳送時，用來包住轉錄的標籤名稱：填寫 transcript 會傳送 <transcript>…</transcript>。這可避免模型回答轉錄內容而不是整理它。留空則不新增任何內容。",
+          "placeholder": "無標籤"
+        }
       }
     },
     "history": {

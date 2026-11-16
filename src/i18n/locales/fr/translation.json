@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Rechercher ou sélectionner un modèle",
           "placeholderNoOptions": "Tapez un nom de modèle",
           "refreshModels": "Actualiser les modèles"
+        },
+        "thinking": {
+          "title": "Réflexion",
+          "description": "Indique si le modèle réfléchit avant de répondre, et avec quel effort. « Par défaut du modèle » ne demande rien. La réflexion ajoute du délai et du coût, et nettoyer une transcription en a rarement besoin. Tous les modèles n'acceptent pas toutes les valeurs : une valeur refusée par le modèle fait échouer la requête.",
+          "options": {
+            "default": "Par défaut du modèle",
+            "off": "Désactivée",
+            "low": "Faible",
+            "medium": "Moyenne",
+            "high": "Élevée",
+            "xhigh": "Très élevée",
+            "max": "Maximale"
+          }
+        },
+        "promptCache": {
+          "title": "Cache du prompt",
+          "description": "Demande au fournisseur de garder les instructions du prompt en cache pendant cette durée. Seul un prompt sans ${output} est mis en cache. La mise en cache coûte plus cher que d'envoyer les instructions une fois, et d'autant plus qu'elle dure : elle n'est rentable que si les transcriptions se suivent de près.",
+          "options": {
+            "off": "Désactivé",
+            "fiveMinutes": "5 minutes",
+            "oneHour": "1 heure"
+          }
+        },
+        "maxTokens": {
+          "title": "Tokens de sortie maximum",
+          "description": "Nombre maximal de tokens que le modèle peut produire pour une transcription, réflexion comprise. Une réponse qui atteint la limite est tronquée, et Handy l'écarte plutôt que de coller une transcription incomplète. Chaque modèle a son propre maximum : une valeur supérieure fait échouer la requête."
         }
       },
       "prompts": {
@@ -687,7 +713,12 @@
         "createPrompt": "Créer le prompt",
         "cancel": "Annuler",
         "selectToEdit": "Sélectionnez un prompt ci-dessus pour voir et modifier ses détails.",
-        "createFirst": "Cliquez sur 'Créer un nouveau prompt' ci-dessus pour créer votre premier prompt de post-traitement."
+        "createFirst": "Cliquez sur 'Créer un nouveau prompt' ci-dessus pour créer votre premier prompt de post-traitement.",
+        "transcriptionTag": {
+          "title": "Balise de transcription",
+          "description": "Nom d'une balise dont entourer la transcription quand Handy l'envoie à part du prompt : transcript envoie <transcript>…</transcript>. Elle évite que le modèle réponde à une transcription au lieu de la nettoyer. Laissez vide pour ne rien ajouter.",
+          "placeholder": "Aucune balise"
+        }
       }
     },
     "history": {

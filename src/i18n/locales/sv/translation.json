@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Sök eller välj en modell",
           "placeholderNoOptions": "Ange ett modellnamn",
           "refreshModels": "Uppdatera modeller"
+        },
+        "thinking": {
+          "title": "Tänkande",
+          "description": "Avgör om modellen tänker innan den svarar och hur stor ansträngning den lägger ner. ”Modellens standard” begär ingenting. Tänkande ger väntetid och kostnad, och att städa upp en transkription behöver det sällan. Alla modeller accepterar inte alla värden: om modellen avvisar ett värde misslyckas förfrågan.",
+          "options": {
+            "default": "Modellens standard",
+            "off": "Av",
+            "low": "Låg",
+            "medium": "Medel",
+            "high": "Hög",
+            "xhigh": "Mycket hög",
+            "max": "Maximal"
+          }
+        },
+        "promptCache": {
+          "title": "Prompt-cachning",
+          "description": "Ber leverantören att behålla promptens instruktioner i sin cache så länge. Bara en prompt utan ${output} cachas. Cachning kostar mer än att skicka instruktionerna en gång, och mer ju längre den varar: det lönar sig bara när transkriptioner följer tätt på varandra.",
+          "options": {
+            "off": "Av",
+            "fiveMinutes": "5 minuter",
+            "oneHour": "1 timme"
+          }
+        },
+        "maxTokens": {
+          "title": "Max antal utdatatokens",
+          "description": "Det högsta antal tokens som modellen får producera för en transkription, tänkande inräknat. Ett svar som når gränsen kapas, och Handy kastar det i stället för att klistra in en ofullständig transkription. Varje modell har sitt eget maximum: ett högre värde gör att förfrågan misslyckas."
         }
       },
       "prompts": {
@@ -687,7 +713,12 @@
         "createPrompt": "Skapa prompt",
         "cancel": "Avbryt",
         "selectToEdit": "Välj en prompt ovan för att visa och redigera dess detaljer.",
-        "createFirst": "Klicka på 'Skapa ny prompt' ovan för att skapa din första prompt för efterbearbetning."
+        "createFirst": "Klicka på 'Skapa ny prompt' ovan för att skapa din första prompt för efterbearbetning.",
+        "transcriptionTag": {
+          "title": "Transkriptionstagg",
+          "description": "Namn på en tagg att omge transkriptionen med när Handy skickar den skild från prompten: transcript skickar <transcript>…</transcript>. Det hindrar modellen från att svara på en transkription i stället för att städa upp den. Lämna tomt för att inte lägga till något.",
+          "placeholder": "Ingen tagg"
+        }
       }
     },
     "history": {

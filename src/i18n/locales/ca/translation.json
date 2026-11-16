@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Cerqueu o seleccioneu un model",
           "placeholderNoOptions": "Escriviu el nom d'un model",
           "refreshModels": "Actualitzeu els models"
+        },
+        "thinking": {
+          "title": "Raonament",
+          "description": "Indica si el model raona abans de respondre i quant d'esforç hi dedica. «Per defecte del model» no demana res. Raonar afegeix demora i cost, i netejar una transcripció poques vegades ho necessita. No tots els models accepten tots els valors: si el model en rebutja un, la sol·licitud falla.",
+          "options": {
+            "default": "Per defecte del model",
+            "off": "Desactivat",
+            "low": "Baix",
+            "medium": "Mitjà",
+            "high": "Alt",
+            "xhigh": "Molt alt",
+            "max": "Màxim"
+          }
+        },
+        "promptCache": {
+          "title": "Memòria cau de la indicació",
+          "description": "Demana al proveïdor que conservi a la memòria cau les instruccions de la indicació durant aquest temps. Només s'hi desa una indicació sense ${output}. La memòria cau costa més que enviar les instruccions una vegada, i més com més dura: només compensa quan les transcripcions se succeeixen de prop.",
+          "options": {
+            "off": "Desactivada",
+            "fiveMinutes": "5 minuts",
+            "oneHour": "1 hora"
+          }
+        },
+        "maxTokens": {
+          "title": "Màxim de tokens de sortida",
+          "description": "El màxim de tokens que el model pot generar per a una transcripció, raonament inclòs. Una resposta que arriba al límit queda tallada, i Handy la descarta en lloc d'enganxar una transcripció incompleta. Cada model té el seu propi màxim: un valor superior fa fallar la sol·licitud."
         }
       },
       "prompts": {
@@ -687,7 +713,12 @@
         "createPrompt": "Creeu la indicació",
         "cancel": "Cancel·leu",
         "selectToEdit": "Seleccioneu una indicació more amunt per veure'n i editar-ne els detalls.",
-        "createFirst": "Feu clic a «Creeu una indicació nova» més amunt per crear la primera indicació de postprocessament."
+        "createFirst": "Feu clic a «Creeu una indicació nova» més amunt per crear la primera indicació de postprocessament.",
+        "transcriptionTag": {
+          "title": "Etiqueta de transcripció",
+          "description": "Nom d'una etiqueta amb què embolcallar la transcripció quan Handy l'envia a part de la indicació: transcript envia <transcript>…</transcript>. Evita que el model respongui a una transcripció en lloc de netejar-la. Deixeu-ho buit per no afegir res.",
+          "placeholder": "Sense etiqueta"
+        }
       }
     },
     "history": {

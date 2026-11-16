@@ -336,6 +336,38 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessTranscriptionTagSetting(tag: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_transcription_tag_setting", { tag }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePostProcessPromptCacheSetting(cache: PostProcessPromptCache) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_prompt_cache_setting", { cache }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePostProcessThinkingSetting(thinking: PostProcessThinking) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_thinking_setting", { thinking }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePostProcessMaxTokensSetting(maxTokens: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_max_tokens_setting", { maxTokens }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
@@ -1147,28 +1179,24 @@ spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: bo
  * prompt: `transcript` sends `<transcript>…</transcript>`. Used as
  * written; empty adds none. Not used when the prompt places the
  * transcription itself with `${output}`.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_transcription_tag?: string; 
 /**
  * Asks the provider to cache the prompt's instructions. Only a prompt
  * without `${output}` is cached, since it goes out as the system
  * prompt, and only Anthropic-format requests ask for it.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_prompt_cache?: PostProcessPromptCache; 
 /**
  * Only Anthropic-format requests carry it. `default` sends nothing,
  * which leaves several recent models thinking. A value the model
  * refuses fails the request.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_thinking?: PostProcessThinking; 
 /**
  * Only Anthropic-format requests carry it: the format requires one. The
  * model's thinking counts toward it, and it isn't raised to match
  * `post_process_thinking`.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_max_tokens?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**

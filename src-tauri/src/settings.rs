@@ -533,25 +533,21 @@ pub struct AppSettings {
     /// prompt: `transcript` sends `<transcript>…</transcript>`. Used as
     /// written; empty adds none. Not used when the prompt places the
     /// transcription itself with `${output}`.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_transcription_tag: String,
     /// Asks the provider to cache the prompt's instructions. Only a prompt
     /// without `${output}` is cached, since it goes out as the system
     /// prompt, and only Anthropic-format requests ask for it.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_prompt_cache: PostProcessPromptCache,
     /// Only Anthropic-format requests carry it. `default` sends nothing,
     /// which leaves several recent models thinking. A value the model
     /// refuses fails the request.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_thinking: PostProcessThinking,
     /// Only Anthropic-format requests carry it: the format requires one. The
     /// model's thinking counts toward it, and it isn't raised to match
     /// `post_process_thinking`.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default = "default_post_process_max_tokens")]
     pub post_process_max_tokens: u32,
     #[serde(default)]

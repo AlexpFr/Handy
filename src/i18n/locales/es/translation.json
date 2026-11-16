@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Buscar o seleccionar un modelo",
           "placeholderNoOptions": "Escribe un nombre de modelo",
           "refreshModels": "Actualizar modelos"
+        },
+        "thinking": {
+          "title": "Razonamiento",
+          "description": "Indica si el modelo razona antes de responder y cuánto esfuerzo dedica. «Predeterminado del modelo» no pide nada. Razonar añade demora y coste, y limpiar una transcripción rara vez lo necesita. No todos los modelos aceptan todos los valores: si el modelo rechaza uno, la solicitud falla.",
+          "options": {
+            "default": "Predeterminado del modelo",
+            "off": "Desactivado",
+            "low": "Bajo",
+            "medium": "Medio",
+            "high": "Alto",
+            "xhigh": "Muy alto",
+            "max": "Máximo"
+          }
+        },
+        "promptCache": {
+          "title": "Caché del prompt",
+          "description": "Pide al proveedor que conserve en caché las instrucciones del prompt durante este tiempo. Solo se guarda en caché un prompt sin ${output}. La caché cuesta más que enviar las instrucciones una vez, y más cuanto más dura: solo compensa cuando las transcripciones se suceden de cerca.",
+          "options": {
+            "off": "Desactivada",
+            "fiveMinutes": "5 minutos",
+            "oneHour": "1 hora"
+          }
+        },
+        "maxTokens": {
+          "title": "Máximo de tokens de salida",
+          "description": "El máximo de tokens que el modelo puede generar para una transcripción, razonamiento incluido. Una respuesta que alcanza el límite queda cortada, y Handy la descarta en lugar de pegar una transcripción incompleta. Cada modelo tiene su propio máximo: un valor superior hace fallar la solicitud."
         }
       },
       "prompts": {
@@ -687,7 +713,12 @@
         "createPrompt": "Crear prompt",
         "cancel": "Cancelar",
         "selectToEdit": "Selecciona un prompt arriba para ver y editar sus detalles.",
-        "createFirst": "Haz clic en 'Crear nuevo prompt' arriba para crear tu primer prompt de post procesamiento."
+        "createFirst": "Haz clic en 'Crear nuevo prompt' arriba para crear tu primer prompt de post procesamiento.",
+        "transcriptionTag": {
+          "title": "Etiqueta de transcripción",
+          "description": "Nombre de una etiqueta con la que envolver la transcripción cuando Handy la envía aparte del prompt: transcript envía <transcript>…</transcript>. Evita que el modelo responda a una transcripción en lugar de limpiarla. Déjalo vacío para no añadir nada.",
+          "placeholder": "Sin etiqueta"
+        }
       }
     },
     "history": {

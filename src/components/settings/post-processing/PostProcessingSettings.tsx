@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { RefreshCcw } from "lucide-react";
-import { commands, type PostProcessApiFormat } from "@/bindings";
+import {
+  commands,
+  type PostProcessApiFormat,
+  type PostProcessPromptCache,
+  type PostProcessThinking,
+} from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
 import {
@@ -18,6 +23,7 @@ import { ProviderSelect } from "../PostProcessingSettingsApi/ProviderSelect";
 import { BaseUrlField } from "../PostProcessingSettingsApi/BaseUrlField";
 import { ApiKeyField } from "../PostProcessingSettingsApi/ApiKeyField";
 import { ModelSelect } from "../PostProcessingSettingsApi/ModelSelect";
+import { MaxTokensField } from "../PostProcessingSettingsApi/MaxTokensField";
 import { usePostProcessProviderState } from "../PostProcessingSettingsApi/usePostProcessProviderState";
 import { ShortcutInput } from "../ShortcutInput";
 import { useSettings } from "../../../hooks/useSettings";
@@ -177,7 +183,164 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
           </div>
         </SettingContainer>
       )}
+
+      {state.apiFormat === "anthropic" && <AnthropicRequestSettings />}
     </>
+  );
+};
+
+/** What only the Anthropic format's requests carry. */
+const AnthropicRequestSettings: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+
+  return (
+    <>
+      <SettingContainer
+        title={t("settings.postProcessing.api.thinking.title")}
+        description={t("settings.postProcessing.api.thinking.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={true}
+      >
+        <Dropdown
+          options={[
+            {
+              value: "default",
+              label: t("settings.postProcessing.api.thinking.options.default"),
+            },
+            {
+              value: "off",
+              label: t("settings.postProcessing.api.thinking.options.off"),
+            },
+            {
+              value: "low",
+              label: t("settings.postProcessing.api.thinking.options.low"),
+            },
+            {
+              value: "medium",
+              label: t("settings.postProcessing.api.thinking.options.medium"),
+            },
+            {
+              value: "high",
+              label: t("settings.postProcessing.api.thinking.options.high"),
+            },
+            {
+              value: "xhigh",
+              label: t("settings.postProcessing.api.thinking.options.xhigh"),
+            },
+            {
+              value: "max",
+              label: t("settings.postProcessing.api.thinking.options.max"),
+            },
+          ]}
+          selectedValue={getSetting("post_process_thinking") ?? "default"}
+          onSelect={(value) =>
+            updateSetting("post_process_thinking", value as PostProcessThinking)
+          }
+          disabled={isUpdating("post_process_thinking")}
+        />
+      </SettingContainer>
+
+      <SettingContainer
+        title={t("settings.postProcessing.api.promptCache.title")}
+        description={t("settings.postProcessing.api.promptCache.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={true}
+      >
+        <Dropdown
+          options={[
+            {
+              value: "off",
+              label: t("settings.postProcessing.api.promptCache.options.off"),
+            },
+            {
+              value: "5m",
+              label: t(
+                "settings.postProcessing.api.promptCache.options.fiveMinutes",
+              ),
+            },
+            {
+              value: "1h",
+              label: t(
+                "settings.postProcessing.api.promptCache.options.oneHour",
+              ),
+            },
+          ]}
+          selectedValue={getSetting("post_process_prompt_cache") ?? "off"}
+          onSelect={(value) =>
+            updateSetting(
+              "post_process_prompt_cache",
+              value as PostProcessPromptCache,
+            )
+          }
+          disabled={isUpdating("post_process_prompt_cache")}
+        />
+      </SettingContainer>
+
+      <SettingContainer
+        title={t("settings.postProcessing.api.maxTokens.title")}
+        description={t("settings.postProcessing.api.maxTokens.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={true}
+      >
+        <MaxTokensField
+          value={getSetting("post_process_max_tokens")}
+          onCommit={(value) => updateSetting("post_process_max_tokens", value)}
+          disabled={isUpdating("post_process_max_tokens")}
+        />
+      </SettingContainer>
+    </>
+  );
+};
+
+const PostProcessingSettingsTranscriptionTag: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+  const tag = getSetting("post_process_transcription_tag") ?? "";
+  const [draft, setDraft] = useState(tag);
+
+  useEffect(() => {
+    setDraft(tag);
+  }, [tag]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== tag) {
+      updateSetting("post_process_transcription_tag", trimmed);
+    } else {
+      setDraft(tag);
+    }
+  };
+
+  return (
+    <SettingContainer
+      title={t("settings.postProcessing.prompts.transcriptionTag.title")}
+      description={t(
+        "settings.postProcessing.prompts.transcriptionTag.description",
+      )}
+      descriptionMode="tooltip"
+      layout="horizontal"
+      grouped={true}
+    >
+      <Input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        placeholder={t(
+          "settings.postProcessing.prompts.transcriptionTag.placeholder",
+        )}
+        variant="compact"
+        disabled={isUpdating("post_process_transcription_tag")}
+        className="w-[200px]"
+      />
+    </SettingContainer>
   );
 };
 
@@ -481,6 +644,7 @@ export const PostProcessingSettings: React.FC = () => {
 
       <SettingsGroup title={t("settings.postProcessing.prompts.title")}>
         <PostProcessingSettingsPrompts />
+        <PostProcessingSettingsTranscriptionTag />
       </SettingsGroup>
     </div>
   );
