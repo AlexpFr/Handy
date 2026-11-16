@@ -548,6 +548,12 @@ pub struct AppSettings {
     /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_thinking: PostProcessThinking,
+    /// Only Anthropic-format requests carry it: the format requires one. The
+    /// model's thinking counts toward it, and it isn't raised to match
+    /// `post_process_thinking`.
+    /// No UI yet: set it by hand in the settings file.
+    #[serde(default = "default_post_process_max_tokens")]
+    pub post_process_max_tokens: u32,
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
@@ -763,6 +769,14 @@ fn default_theme() -> Theme {
 
 fn default_post_process_enabled() -> bool {
     false
+}
+
+/// Output budget of a post-processing request until the user sets one. Ample
+/// for a cleaned-up dictation from a model that doesn't think.
+pub const DEFAULT_POST_PROCESS_MAX_TOKENS: u32 = 4096;
+
+fn default_post_process_max_tokens() -> u32 {
+    DEFAULT_POST_PROCESS_MAX_TOKENS
 }
 
 fn default_app_language() -> String {
@@ -1104,6 +1118,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_transcription_tag: String::new(),
         post_process_prompt_cache: PostProcessPromptCache::Off,
         post_process_thinking: PostProcessThinking::Default,
+        post_process_max_tokens: default_post_process_max_tokens(),
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
