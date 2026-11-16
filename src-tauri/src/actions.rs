@@ -1142,16 +1142,17 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
 #[cfg(test)]
 mod tests {
     use super::{
-        complete_unless_cancelled, is_blank_transcription, non_blank_post_processed_text,
-        post_process_transcription, should_use_streaming_overlay, strip_invisible_chars,
-        strip_think_block, PostProcessOutcome,
+        build_transcription_message, complete_unless_cancelled, is_blank_transcription,
+        non_blank_post_processed_text, post_process_transcription, should_use_streaming_overlay,
+        strip_invisible_chars, strip_think_block, PostProcessOutcome,
     };
-    use crate::settings::{get_default_settings, AppSettings, OverlayStyle};
+    use crate::settings::{get_default_settings, AppSettings, OverlayStyle, PostProcessApiFormat};
+    use serde_json::{json, Value};
     use std::future;
     use std::io::{Read, Write};
-    use std::net::TcpListener;
+    use std::net::{TcpListener, TcpStream};
     use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Arc;
+    use std::sync::{mpsc, Arc};
     use std::thread;
     use std::time::Duration;
 
@@ -1194,6 +1195,125 @@ mod tests {
 
     fn run_post_process(settings: &AppSettings, transcription: &str) -> PostProcessOutcome {
         tauri::async_runtime::block_on(post_process_transcription(settings, transcription))
+    }
+
+    const CHAT_REPLY: &str = r#"{"choices":[{"message":{"content":"polished"}}]}"#;
+    const ANTHROPIC_REPLY: &str = r#"{"content":[{"type":"text","text":"polished"}]}"#;
+
+    /// Reads a whole request, however it is split across packets, and returns
+    /// its JSON body.
+    fn read_json_request(stream: &mut TcpStream) -> Value {
+        let mut request = Vec::new();
+        let mut chunk = [0; 8192];
+        loop {
+            let read = stream.read(&mut chunk).unwrap();
+            assert!(read > 0, "the request ended before its body");
+            request.extend_from_slice(&chunk[..read]);
+
+            let Some(headers_end) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n")
+            else {
+                continue;
+            };
+            let body_start = headers_end + 4;
+            let body_length: usize = String::from_utf8_lossy(&request[..headers_end])
+                .to_ascii_lowercase()
+                .lines()
+                .find_map(|line| line.strip_prefix("content-length:"))
+                .expect("the request has a content-length")
+                .trim()
+                .parse()
+                .unwrap();
+            if request.len() >= body_start + body_length {
+                return serde_json::from_slice(&request[body_start..body_start + body_length])
+                    .unwrap();
+            }
+        }
+    }
+
+    /// Post-processes "hello" with `prompt`, answered with `reply`, and
+    /// returns the JSON body of the request that took. The settings send it
+    /// unstructured, in the OpenAI format, until `configure` changes them.
+    fn request_sent(
+        reply: &'static str,
+        prompt: &str,
+        configure: impl FnOnce(&mut AppSettings),
+    ) -> Value {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (requests, received) = mpsc::channel();
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            requests.send(read_json_request(&mut stream)).unwrap();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{reply}",
+                reply.len()
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+        });
+
+        let mut settings = post_process_settings(&format!("http://{address}"));
+        settings.post_process_prompts[0].prompt = prompt.to_string();
+        configure(&mut settings);
+
+        assert_eq!(
+            run_post_process(&settings, "hello"),
+            PostProcessOutcome::Done("polished".to_string())
+        );
+        received.try_recv().expect("a request was sent")
+    }
+
+    #[test]
+    fn prompt_without_output_sends_the_transcription_apart() {
+        let request = request_sent(CHAT_REPLY, "Fix the punctuation.", |_| {});
+        assert_eq!(
+            request["messages"],
+            json!([
+                { "role": "system", "content": "Fix the punctuation." },
+                { "role": "user", "content": "hello" },
+            ])
+        );
+    }
+
+    #[test]
+    fn prompt_with_output_is_sent_as_one_message_holding_the_transcription() {
+        let request = request_sent(CHAT_REPLY, "Fix the punctuation of: ${output}", |_| {});
+        assert_eq!(
+            request["messages"],
+            json!([{ "role": "user", "content": "Fix the punctuation of: hello" }])
+        );
+    }
+
+    #[test]
+    fn transcription_sent_apart_is_wrapped_in_the_tag_when_one_is_set() {
+        assert_eq!(
+            build_transcription_message("hello", "transcript"),
+            "<transcript>hello</transcript>"
+        );
+        assert_eq!(build_transcription_message("hello", ""), "hello");
+    }
+
+    /// The one test that follows every post-processing setting from the
+    /// settings to the request. What each one asks for, value by value, is
+    /// tested on the function that decides it.
+    #[test]
+    fn anthropic_format_request_carries_what_the_user_set() {
+        let request = request_sent(ANTHROPIC_REPLY, "Fix the punctuation.", |settings| {
+            let provider_id = settings.post_process_provider_id.clone();
+            settings
+                .post_process_provider_mut(&provider_id)
+                .expect("the default provider exists")
+                .api_format = PostProcessApiFormat::Anthropic;
+            settings.post_process_transcription_tag = "transcript".to_string();
+        });
+        assert_eq!(
+            request,
+            json!({
+                "model": "model",
+                "max_tokens": 4096,
+                "system": "Fix the punctuation.",
+                "messages": [{ "role": "user", "content": "<transcript>hello</transcript>" }],
+            })
+        );
     }
 
     #[test]
