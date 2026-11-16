@@ -308,6 +308,8 @@ async fn post_process_transcription(
     // Ask these providers to skip reasoning/thinking — post-processing rarely
     // benefits from it and it adds seconds of latency. llm_client picks the
     // field the endpoint understands and retries without it if rejected.
+    // The Anthropic format ignores this: there the user sets what the model
+    // is asked, with `post_process_thinking`.
     let disable_reasoning = matches!(provider.id.as_str(), "custom" | "openrouter");
 
     if provider.supports_structured_output {
@@ -448,7 +450,10 @@ async fn post_process_transcription(
         &model,
         user_content,
         system_prompt,
-        settings.post_process_prompt_cache,
+        crate::llm_client::AnthropicOptions {
+            system_prompt_cache: settings.post_process_prompt_cache,
+            thinking: settings.post_process_thinking,
+        },
         disable_reasoning,
     )
     .await

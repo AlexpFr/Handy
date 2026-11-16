@@ -1156,7 +1156,14 @@ post_process_transcription_tag?: string;
  * prompt, and only Anthropic-format requests ask for it.
  * No UI yet: set it by hand in the settings file.
  */
-post_process_prompt_cache?: PostProcessPromptCache; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
+post_process_prompt_cache?: PostProcessPromptCache; 
+/**
+ * Only Anthropic-format requests carry it. `default` sends nothing,
+ * which leaves several recent models thinking. A value the model
+ * refuses fails the request.
+ * No UI yet: set it by hand in the settings file.
+ */
+post_process_thinking?: PostProcessThinking; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**
  * Experimental, macOS only: move a Bluetooth headset (AirPods) to this
  * Mac while recording, so its microphone does not return silence while
@@ -1431,6 +1438,19 @@ export type PostProcessPromptCache =
  */
 "off" | "5m" | "1h"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean; api_format?: PostProcessApiFormat }
+/**
+ * What a provider is asked about its model's thinking. The values are the
+ * ones the Anthropic format takes.
+ */
+export type PostProcessThinking = 
+/**
+ * Ask for nothing: the model keeps its own default.
+ */
+"default" | 
+/**
+ * Ask the model not to think.
+ */
+"off" | "low" | "medium" | "high" | "xhigh" | "max"
 /**
  * Recording phase events for windows that follow along (onboarding's Try it).
  */
