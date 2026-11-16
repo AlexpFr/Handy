@@ -1316,12 +1316,13 @@ mod tests {
             settings.post_process_transcription_tag = "transcript".to_string();
             settings.post_process_prompt_cache = PostProcessPromptCache::OneHour;
             settings.post_process_thinking = PostProcessThinking::High;
+            settings.post_process_max_tokens = 64000;
         });
         assert_eq!(
             request,
             json!({
                 "model": "model",
-                "max_tokens": 4096,
+                "max_tokens": 64000,
                 "system": [{
                     "type": "text",
                     "text": "Fix the punctuation.",

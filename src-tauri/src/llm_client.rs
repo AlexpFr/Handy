@@ -1196,10 +1196,16 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
-            AnthropicOptions::default(),
+            AnthropicOptions {
+                max_tokens: 20000,
+                ..Default::default()
+            },
             true,
         )
         .await;
-        assert!(result.unwrap_err().contains("truncated"));
+        let error = result.unwrap_err();
+        assert!(error.contains("truncated"));
+        // The limit it names is the one the request carried.
+        assert!(error.contains("20000 token limit"));
     }
 }
