@@ -1147,7 +1147,10 @@ mod tests {
         non_blank_post_processed_text, post_process_transcription, should_use_streaming_overlay,
         strip_invisible_chars, strip_think_block, PostProcessOutcome,
     };
-    use crate::settings::{get_default_settings, AppSettings, OverlayStyle, PostProcessApiFormat};
+    use crate::settings::{
+        get_default_settings, AppSettings, OverlayStyle, PostProcessApiFormat,
+        PostProcessPromptCache,
+    };
     use serde_json::{json, Value};
     use std::future;
     use std::io::{Read, Write};
@@ -1305,13 +1308,18 @@ mod tests {
                 .expect("the default provider exists")
                 .api_format = PostProcessApiFormat::Anthropic;
             settings.post_process_transcription_tag = "transcript".to_string();
+            settings.post_process_prompt_cache = PostProcessPromptCache::OneHour;
         });
         assert_eq!(
             request,
             json!({
                 "model": "model",
                 "max_tokens": 4096,
-                "system": "Fix the punctuation.",
+                "system": [{
+                    "type": "text",
+                    "text": "Fix the punctuation.",
+                    "cache_control": { "type": "ephemeral", "ttl": "1h" },
+                }],
                 "messages": [{ "role": "user", "content": "<transcript>hello</transcript>" }],
             })
         );
