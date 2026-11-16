@@ -157,10 +157,27 @@ fn strip_think_block(s: &str) -> &str {
     s
 }
 
+/// Where a prompt places the transcription itself.
+const OUTPUT_PLACEHOLDER: &str = "${output}";
+
 /// Build a system prompt from the user's prompt template.
 /// Removes `${output}` placeholder since the transcription is sent as the user message.
 fn build_system_prompt(prompt_template: &str) -> String {
-    prompt_template.replace("${output}", "").trim().to_string()
+    prompt_template
+        .replace(OUTPUT_PLACEHOLDER, "")
+        .trim()
+        .to_string()
+}
+
+/// The transcription as a message of its own, apart from the prompt. Sent
+/// bare, the model can take it as addressed to it and answer a question in it
+/// instead of cleaning it, so the user can name a tag to put around it.
+fn build_transcription_message(transcription: &str, tag: &str) -> String {
+    if tag.is_empty() {
+        transcription.to_string()
+    } else {
+        format!("<{tag}>{transcription}</{tag}>")
+    }
 }
 
 /// Returns `true` when a transcription has no meaningful content to
@@ -297,7 +314,8 @@ async fn post_process_transcription(
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = build_system_prompt(&prompt);
-        let user_content = transcription.to_string();
+        let user_content =
+            build_transcription_message(transcription, &settings.post_process_transcription_tag);
 
         // Handle Apple Intelligence separately since it uses native Swift APIs
         if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
@@ -410,15 +428,26 @@ async fn post_process_transcription(
         }
     }
 
-    // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let processed_prompt = prompt.replace("${output}", transcription);
-    debug!("Processed prompt length: {} chars", processed_prompt.len());
+    // Legacy mode: a prompt with ${output} goes out as a single message, with
+    // the transcription in its place. A prompt without it holds only
+    // instructions, so it goes out as the system prompt, and the
+    // transcription as the user message.
+    let (user_content, system_prompt) = if prompt.contains(OUTPUT_PLACEHOLDER) {
+        (prompt.replace(OUTPUT_PLACEHOLDER, transcription), None)
+    } else {
+        (
+            build_transcription_message(transcription, &settings.post_process_transcription_tag),
+            Some(build_system_prompt(&prompt)),
+        )
+    };
+    debug!("Processed prompt length: {} chars", user_content.len());
 
     match crate::llm_client::send_chat_completion(
         &provider,
         api_key,
         &model,
-        processed_prompt,
+        user_content,
+        system_prompt,
         disable_reasoning,
     )
     .await
