@@ -1,4 +1,4 @@
-use crate::settings::{PostProcessApiFormat, PostProcessProvider};
+use crate::settings::{PostProcessApiFormat, PostProcessPromptCache, PostProcessProvider};
 use log::{debug, error, info};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
@@ -146,16 +146,39 @@ struct AnthropicMessagesRequest {
     model: String,
     max_tokens: u32,
     /// The Messages API takes the system prompt here: it rejects a `system`
-    /// role in `messages`.
+    /// role in `messages`. See `anthropic_system` for its two shapes.
     #[serde(skip_serializing_if = "Option::is_none")]
-    system: Option<String>,
+    system: Option<Value>,
     messages: Vec<ChatMessage>,
+}
+
+/// The `system` field of a Messages request. This format caches only when a
+/// request asks, block by block, so a system prompt to cache goes out as a
+/// list of one text block carrying `cache_control`. Otherwise it stays the
+/// plain string.
+fn anthropic_system(system_prompt: String, cache: PostProcessPromptCache) -> Value {
+    let cache_control = match cache {
+        PostProcessPromptCache::Off => return Value::String(system_prompt),
+        // Five minutes is how long this format caches without a `ttl`.
+        PostProcessPromptCache::FiveMinutes => serde_json::json!({ "type": "ephemeral" }),
+        PostProcessPromptCache::OneHour => {
+            serde_json::json!({ "type": "ephemeral", "ttl": "1h" })
+        }
+    };
+    serde_json::json!([{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": cache_control,
+    }])
 }
 
 #[derive(Debug, Deserialize)]
 struct AnthropicMessagesResponse {
     content: Vec<AnthropicContentBlock>,
     stop_reason: Option<String>,
+    /// Token counts. Kept loose: only logged, so an endpoint that shapes them
+    /// differently must not fail the response.
+    usage: Option<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -180,6 +203,15 @@ impl AnthropicMessagesResponse {
             })
             .collect();
         (!text.is_empty()).then_some(text)
+    }
+
+    /// A token count of `usage`, 0 when the endpoint doesn't report it.
+    fn usage_tokens(&self, field: &str) -> u64 {
+        self.usage
+            .as_ref()
+            .and_then(|usage| usage.get(field))
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
     }
 }
 
@@ -377,7 +409,8 @@ fn report_reqwest_error(context: &str, error: &reqwest::Error) -> String {
 
 /// Send a chat completion request in the provider's API format.
 /// `system_prompt`, when provided, is sent apart from `user_content`, the way
-/// each format takes a system prompt.
+/// each format takes a system prompt. `system_prompt_cache` asks the provider
+/// to cache it, in the format that has to be asked (Anthropic).
 /// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
 /// or Err on actual errors (HTTP, parsing, etc.)
 pub async fn send_chat_completion(
@@ -386,10 +419,19 @@ pub async fn send_chat_completion(
     model: &str,
     user_content: String,
     system_prompt: Option<String>,
+    system_prompt_cache: PostProcessPromptCache,
     disable_reasoning: bool,
 ) -> Result<Option<String>, String> {
     if provider.api_format == PostProcessApiFormat::Anthropic {
-        return send_anthropic_message(provider, api_key, model, user_content, system_prompt).await;
+        return send_anthropic_message(
+            provider,
+            api_key,
+            model,
+            user_content,
+            system_prompt,
+            system_prompt_cache,
+        )
+        .await;
     }
 
     send_chat_completion_with_schema(
@@ -568,8 +610,11 @@ async fn send_anthropic_message(
     model: &str,
     user_content: String,
     system_prompt: Option<String>,
+    system_prompt_cache: PostProcessPromptCache,
 ) -> Result<Option<String>, String> {
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
+    let asks_for_cache =
+        system_prompt.is_some() && system_prompt_cache != PostProcessPromptCache::Off;
 
     debug!(
         "Sending Anthropic Messages request to: {}",
@@ -579,7 +624,7 @@ async fn send_anthropic_message(
     let request_body = AnthropicMessagesRequest {
         model: model.to_string(),
         max_tokens: ANTHROPIC_MAX_TOKENS,
-        system: system_prompt,
+        system: system_prompt.map(|system| anthropic_system(system, system_prompt_cache)),
         messages: vec![ChatMessage {
             role: "user".to_string(),
             content: user_content,
@@ -615,6 +660,17 @@ async fn send_anthropic_message(
         .json()
         .await
         .map_err(|e| report_reqwest_error("Failed to parse API response", &e))?;
+
+    // The provider caches nothing, without saying so, when the system prompt
+    // is shorter than the model's minimum: the counts are the only way to
+    // tell whether asking had any effect.
+    if asks_for_cache {
+        debug!(
+            "System prompt cache: {} tokens written, {} tokens read",
+            message.usage_tokens("cache_creation_input_tokens"),
+            message.usage_tokens("cache_read_input_tokens")
+        );
+    }
 
     // A response cut off at the token budget is incomplete; pasting it would
     // silently drop the end of the dictation.
@@ -969,6 +1025,7 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
+            PostProcessPromptCache::Off,
             true,
         )
         .await;
@@ -988,6 +1045,7 @@ mod tests {
             "test-model",
             "raw text".to_string(),
             None,
+            PostProcessPromptCache::Off,
             false,
         )
         .await;
@@ -1007,6 +1065,7 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
+            PostProcessPromptCache::Off,
             true,
         )
         .await;

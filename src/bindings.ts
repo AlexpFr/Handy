@@ -1039,7 +1039,7 @@ async updateRecordingRetentionPeriod(period: string) : Promise<Result<null, stri
 },
 /**
  * Checks if the Mac is a laptop by detecting battery presence
- * 
+ *
  * This uses pmset to check for battery information.
  * Returns true if a battery is detected (laptop), false otherwise (desktop)
  */
@@ -1149,7 +1149,14 @@ spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: bo
  * transcription itself with `${output}`.
  * No UI yet: set it by hand in the settings file.
  */
-post_process_transcription_tag?: string; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
+post_process_transcription_tag?: string; 
+/**
+ * Asks the provider to cache the prompt's instructions. Only a prompt
+ * without `${output}` is cached, since it goes out as the system
+ * prompt, and only Anthropic-format requests ask for it.
+ * No UI yet: set it by hand in the settings file.
+ */
+post_process_prompt_cache?: PostProcessPromptCache; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**
  * Experimental, macOS only: move a Bluetooth headset (AirPods) to this
  * Mac while recording, so its microphone does not return silence while
@@ -1413,6 +1420,16 @@ export type PostProcessApiFormat =
  * Anthropic Messages (`/messages`)
  */
 "anthropic"
+/**
+ * How long a provider is asked to keep a post-processing prompt's
+ * instructions in its cache. The values are the durations the Anthropic
+ * format offers.
+ */
+export type PostProcessPromptCache = 
+/**
+ * Ask for nothing.
+ */
+"off" | "5m" | "1h"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean; api_format?: PostProcessApiFormat }
 /**
  * Recording phase events for windows that follow along (onboarding's Try it).

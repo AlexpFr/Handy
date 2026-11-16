@@ -448,6 +448,7 @@ async fn post_process_transcription(
         &model,
         user_content,
         system_prompt,
+        settings.post_process_prompt_cache,
         disable_reasoning,
     )
     .await

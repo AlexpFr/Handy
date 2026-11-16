@@ -106,6 +106,21 @@ pub enum PostProcessApiFormat {
     Anthropic,
 }
 
+/// How long a provider is asked to keep a post-processing prompt's
+/// instructions in its cache. The values are the durations the Anthropic
+/// format offers.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, Type)]
+pub enum PostProcessPromptCache {
+    /// Ask for nothing.
+    #[default]
+    #[serde(rename = "off")]
+    Off,
+    #[serde(rename = "5m")]
+    FiveMinutes,
+    #[serde(rename = "1h")]
+    OneHour,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct PostProcessProvider {
     pub id: String,
@@ -504,6 +519,12 @@ pub struct AppSettings {
     /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_transcription_tag: String,
+    /// Asks the provider to cache the prompt's instructions. Only a prompt
+    /// without `${output}` is cached, since it goes out as the system
+    /// prompt, and only Anthropic-format requests ask for it.
+    /// No UI yet: set it by hand in the settings file.
+    #[serde(default)]
+    pub post_process_prompt_cache: PostProcessPromptCache,
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
@@ -1058,6 +1079,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: None,
         post_process_transcription_tag: String::new(),
+        post_process_prompt_cache: PostProcessPromptCache::Off,
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
