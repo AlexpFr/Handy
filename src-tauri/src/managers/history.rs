@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Local, Utc};
 use log::{debug, error, info, warn};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{named_params, params, Connection, OptionalExtension};
 use rusqlite_migration::{MigrationDefinitionError, Migrations, M};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -10,7 +10,9 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_specta::Event;
 
+use crate::actions::PostProcessRun;
 use crate::language_detection::{LanguageDecision, LanguageSource};
+use crate::managers::transcription::Decoding;
 
 /// Database migrations for transcription history.
 /// Each migration is applied in order. The library tracks which migrations
@@ -38,6 +40,52 @@ static MIGRATIONS: &[M] = &[
 /// Nullable columns added outside [`MIGRATIONS`]; see
 /// [`HistoryManager::apply_migrations`].
 const ADDED_COLUMNS: &[&str] = &["source_name", "language", "language_source"];
+
+/// One row per transcription of an entry (its dictation, each retry, or its
+/// file) with that transcription's post-processing, to compare models and
+/// prompts on what they produced. The entry keeps the latest run's text.
+///
+/// Created outside [`MIGRATIONS`] for the reason [`ADDED_COLUMNS`] are. The
+/// trigger stands in for a foreign key, which Handy's connections don't
+/// enforce, so a build without this table still deletes an entry's runs.
+/// Entries from before it have no runs. A value that wasn't known is NULL.
+const RUNS_SCHEMA: &str = "
+CREATE TABLE IF NOT EXISTS transcription_history_runs (
+    id INTEGER PRIMARY KEY,
+    history_id INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    language TEXT,
+    language_source TEXT,
+    transcription_text TEXT NOT NULL,
+    post_processed_text TEXT,
+    post_process_prompt TEXT,
+    app_version TEXT NOT NULL,
+    model TEXT,
+    decode_mode TEXT,
+    audio_ms INTEGER,
+    transcription_ms INTEGER,
+    unfiltered_text TEXT,
+    transcription_settings TEXT,
+    post_process_provider TEXT,
+    response_model TEXT,
+    request_options TEXT,
+    stop_reason TEXT,
+    post_process_error TEXT,
+    post_process_ms INTEGER,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    cache_read_tokens INTEGER,
+    cache_write_tokens INTEGER,
+    thinking_tokens INTEGER
+);
+CREATE INDEX IF NOT EXISTS transcription_history_runs_history_id
+    ON transcription_history_runs (history_id);
+CREATE TRIGGER IF NOT EXISTS transcription_history_runs_delete
+    AFTER DELETE ON transcription_history
+BEGIN
+    DELETE FROM transcription_history_runs WHERE history_id = OLD.id;
+END;";
 
 /// Every column a [`HistoryEntry`] is read from.
 const ENTRY_COLUMNS: &str = "id, file_name, timestamp, saved, title, transcription_text, \
@@ -81,6 +129,35 @@ pub struct HistoryEntry {
     pub language: Option<String>,
     /// How that language was chosen; `None` before it was recorded.
     pub language_source: Option<LanguageSource>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum RunKind {
+    Dictation,
+}
+
+impl RunKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            RunKind::Dictation => "dictation",
+        }
+    }
+}
+
+/// One transcription of an entry and its post-processing; see
+/// [`RUNS_SCHEMA`].
+pub struct TranscriptionRun {
+    pub kind: RunKind,
+    pub transcription_text: String,
+    pub language: Option<LanguageDecision>,
+    pub decoding: Decoding,
+    /// Of the audio the model got.
+    pub audio_ms: u64,
+    /// For a retry, waiting for the model to load is part of it.
+    pub transcription_ms: u64,
+    pub post_processed_text: Option<String>,
+    /// `None` when post-processing wasn't asked for, or had no speech.
+    pub post_process: Option<PostProcessRun>,
 }
 
 pub struct HistoryManager {
@@ -182,6 +259,7 @@ impl HistoryManager {
                 info!("Added the {column} column to transcription history");
             }
         }
+        conn.execute_batch(RUNS_SCHEMA)?;
 
         Ok(())
     }
@@ -378,6 +456,65 @@ impl HistoryManager {
         }
 
         Ok(entry)
+    }
+
+    /// Keep `run` as a run of the entry `history_id`.
+    pub fn add_run(&self, history_id: i64, run: &TranscriptionRun) -> Result<()> {
+        Self::insert_run(&self.get_connection()?, history_id, run)?;
+        debug!("Saved a run of history entry {}", history_id);
+        Ok(())
+    }
+
+    fn insert_run(conn: &Connection, history_id: i64, run: &TranscriptionRun) -> Result<()> {
+        let (language, language_source) = split_language(run.language.clone());
+        let post_process = run.post_process.as_ref();
+        let reply = post_process.map(|post_process| &post_process.reply);
+        conn.execute(
+            "INSERT INTO transcription_history_runs (
+                history_id, timestamp, kind, language, language_source, transcription_text,
+                post_processed_text, post_process_prompt, app_version, model, decode_mode,
+                audio_ms, transcription_ms, unfiltered_text, transcription_settings,
+                post_process_provider, response_model, request_options, stop_reason,
+                post_process_error, post_process_ms, input_tokens, output_tokens,
+                cache_read_tokens, cache_write_tokens, thinking_tokens
+            ) VALUES (
+                :history_id, :timestamp, :kind, :language, :language_source, :transcription_text,
+                :post_processed_text, :post_process_prompt, :app_version, :model, :decode_mode,
+                :audio_ms, :transcription_ms, :unfiltered_text, :transcription_settings,
+                :post_process_provider, :response_model, :request_options, :stop_reason,
+                :post_process_error, :post_process_ms, :input_tokens, :output_tokens,
+                :cache_read_tokens, :cache_write_tokens, :thinking_tokens
+            )",
+            named_params! {
+                ":history_id": history_id,
+                ":timestamp": Utc::now().timestamp(),
+                ":kind": run.kind.as_str(),
+                ":language": language,
+                ":language_source": language_source.map(LanguageSource::as_str),
+                ":transcription_text": &run.transcription_text,
+                ":post_processed_text": &run.post_processed_text,
+                ":post_process_prompt": post_process.and_then(|p| p.prompt.as_deref()),
+                ":app_version": env!("CARGO_PKG_VERSION"),
+                ":model": &run.decoding.model,
+                ":decode_mode": run.decoding.decode_mode,
+                ":audio_ms": run.audio_ms,
+                ":transcription_ms": run.transcription_ms,
+                ":unfiltered_text": &run.decoding.unfiltered_text,
+                ":transcription_settings": &run.decoding.settings,
+                ":post_process_provider": post_process.and_then(|p| p.provider.as_deref()),
+                ":response_model": reply.and_then(|r| r.model.as_deref()),
+                ":request_options": post_process.and_then(|p| p.request_options.as_deref()),
+                ":stop_reason": reply.and_then(|r| r.stop_reason.as_deref()),
+                ":post_process_error": post_process.and_then(|p| p.error),
+                ":post_process_ms": post_process.map(|p| p.duration_ms),
+                ":input_tokens": reply.and_then(|r| r.input_tokens),
+                ":output_tokens": reply.and_then(|r| r.output_tokens),
+                ":cache_read_tokens": reply.and_then(|r| r.cache_read_tokens),
+                ":cache_write_tokens": reply.and_then(|r| r.cache_write_tokens),
+                ":thinking_tokens": reply.and_then(|r| r.thinking_tokens),
+            },
+        )?;
+        Ok(())
     }
 
     /// Update an existing history entry with new transcription results (used by retry).
@@ -800,6 +937,38 @@ mod tests {
         // Opening it again changes nothing.
         HistoryManager::apply_migrations(&mut conn).expect("migrate again");
         assert_eq!(user_version(&conn), MIGRATIONS.len() as i32);
+    }
+
+    #[test]
+    fn deleting_an_entry_deletes_its_runs() {
+        let mut conn = Connection::open_in_memory().expect("open in-memory db");
+        HistoryManager::apply_migrations(&mut conn).expect("migrate");
+        insert_entry(&conn, 100, "kept", None);
+        insert_entry(&conn, 200, "deleted", None);
+        let run = TranscriptionRun {
+            kind: RunKind::Dictation,
+            transcription_text: "hello".to_string(),
+            language: None,
+            decoding: Decoding::default(),
+            audio_ms: 1000,
+            transcription_ms: 100,
+            post_processed_text: None,
+            post_process: None,
+        };
+        for history_id in [1, 2] {
+            HistoryManager::insert_run(&conn, history_id, &run).expect("insert run");
+        }
+
+        conn.execute("DELETE FROM transcription_history WHERE id = 2", [])
+            .expect("delete entry");
+        let runs: Vec<i64> = conn
+            .prepare("SELECT history_id FROM transcription_history_runs")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(runs, [1]);
     }
 
     #[test]

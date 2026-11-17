@@ -8,7 +8,7 @@ use transcribe_cpp::Transcript;
 
 use super::{
     agreed_language, engine_error, post_process_transcription_text, real_time_factor, BatchContext,
-    Transcription, TranscriptionManager,
+    Decoding, Transcription, TranscriptionManager,
 };
 use crate::audio_toolkit::chunking::Chunker;
 use crate::engine_supervisor::EngineError;
@@ -46,6 +46,7 @@ impl TranscriptionManager {
             return Ok(Some(Transcription {
                 text: String::new(),
                 language: None,
+                decoding: Decoding::default(),
             }));
         }
 
@@ -133,6 +134,7 @@ impl TranscriptionManager {
         Ok(Some(Transcription {
             text: paragraphs.join("\n\n"),
             language: Some(language),
+            decoding: Decoding::default(),
         }))
     }
 }

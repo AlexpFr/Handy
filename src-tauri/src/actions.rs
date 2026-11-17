@@ -2,14 +2,17 @@
 use crate::apple_intelligence;
 use crate::audio_feedback::{play_feedback_sound, play_feedback_sound_blocking, SoundType};
 use crate::audio_toolkit::VadPolicy;
+use crate::llm_client::{ChatError, ChatReply, ReplyMeta};
 use crate::managers::audio::{recording_notice_code, AudioRecordingManager};
-use crate::managers::history::HistoryManager;
+use crate::managers::history::{HistoryManager, RunKind, TranscriptionRun};
 use crate::managers::model::ModelManager;
 use crate::managers::transcription::policy::{live_decode, LiveDecode, ModelTraits};
 use crate::managers::transcription::StreamWorkKind;
 use crate::managers::transcription::{Transcription, TranscriptionManager};
 use crate::notices::{self, Notice, NoticeCode, NoticeSource};
-use crate::settings::{get_settings, AppSettings, OverlayStyle, APPLE_INTELLIGENCE_PROVIDER_ID};
+use crate::settings::{
+    get_settings, AppSettings, OverlayStyle, PostProcessProvider, APPLE_INTELLIGENCE_PROVIDER_ID,
+};
 use crate::shortcut;
 use crate::tray::{set_tray_state, TrayIconState};
 use crate::utils::{
@@ -172,6 +175,17 @@ fn is_blank_transcription(transcription: &str) -> bool {
     transcription.trim().is_empty()
 }
 
+/// The settings a post-processing request carries, as JSON for the history.
+/// No setting changes the request yet, so it is always empty.
+fn sent_request_options(
+    _settings: &AppSettings,
+    _provider: &PostProcessProvider,
+    _transcription_apart: bool,
+) -> String {
+    let options = serde_json::Map::new();
+    serde_json::Value::Object(options).to_string()
+}
+
 fn non_blank_post_processed_text(text: String) -> Option<String> {
     if is_blank_transcription(&text) {
         warn!(
@@ -218,9 +232,39 @@ enum PostProcessOutcome {
     Failed,
 }
 
+/// What the history keeps about one post-processing, whatever became of it.
+#[derive(Debug, Default)]
+pub struct PostProcessRun {
+    pub provider: Option<String>,
+    /// The selected prompt's text, kept even when post-processing failed.
+    pub prompt: Option<String>,
+    /// What the last request carried; see `sent_request_options`.
+    pub request_options: Option<String>,
+    /// What the last reply said about itself.
+    pub reply: ReplyMeta,
+    /// Why it failed, as a short code; `None` when it didn't.
+    pub error: Option<&'static str>,
+    pub duration_ms: u64,
+}
+
+impl PostProcessRun {
+    /// Keeps what a reply said about itself, a truncated one's too, and
+    /// passes on its text.
+    fn read(&mut self, reply: Result<ChatReply, ChatError>) -> Result<Option<String>, ChatError> {
+        if let Err(ChatError::Truncated { meta, .. }) = &reply {
+            self.reply = ReplyMeta::clone(meta);
+        }
+        let reply = reply?;
+        self.reply = reply.meta;
+        Ok(reply.text)
+    }
+}
+
+/// Fills in `run` as it goes, so a timeout still leaves what was known.
 async fn post_process_transcription(
     settings: &AppSettings,
     transcription: &str,
+    run: &mut PostProcessRun,
 ) -> PostProcessOutcome {
     if is_blank_transcription(transcription) {
         debug!("Post-processing skipped because the transcription is empty");
@@ -234,6 +278,8 @@ async fn post_process_transcription(
             return PostProcessOutcome::Failed;
         }
     };
+
+    run.provider = Some(provider.id.clone());
 
     let model = settings
         .post_process_models
@@ -271,6 +317,8 @@ async fn post_process_transcription(
             return PostProcessOutcome::Failed;
         }
     };
+
+    run.prompt = Some(prompt.clone());
 
     if prompt.trim().is_empty() {
         debug!("Post-processing skipped because the selected prompt is empty");
@@ -319,6 +367,7 @@ async fn post_process_transcription(
                     Ok(result) => {
                         if result.trim().is_empty() {
                             debug!("Apple Intelligence returned an empty response");
+                            run.error = Some("empty_response");
                             PostProcessOutcome::Failed
                         } else {
                             let result = strip_invisible_chars(&result);
@@ -331,6 +380,7 @@ async fn post_process_transcription(
                     }
                     Err(err) => {
                         error!("Apple Intelligence post-processing failed: {}", err);
+                        run.error = Some("request_failed");
                         PostProcessOutcome::Failed
                     }
                 };
@@ -356,7 +406,8 @@ async fn post_process_transcription(
             "additionalProperties": false
         });
 
-        match crate::llm_client::send_chat_completion_with_schema(
+        run.request_options = Some(sent_request_options(settings, &provider, true));
+        let reply = crate::llm_client::send_chat_completion_with_schema(
             &provider,
             api_key.clone(),
             &model,
@@ -365,9 +416,8 @@ async fn post_process_transcription(
             Some(json_schema),
             disable_reasoning,
         )
-        .await
-        .map(|reply| reply.text)
-        {
+        .await;
+        match run.read(reply) {
             Ok(Some(content)) => {
                 // Parse the JSON response to extract the transcription field
                 let content = strip_think_block(&content);
@@ -399,6 +449,7 @@ async fn post_process_transcription(
             }
             Ok(None) => {
                 error!("LLM API response has no content");
+                run.error = Some("empty_response");
                 return PostProcessOutcome::Failed;
             }
             Err(e) => {
@@ -414,17 +465,17 @@ async fn post_process_transcription(
     // Legacy mode: Replace ${output} variable in the prompt with the actual text
     let processed_prompt = prompt.replace("${output}", transcription);
     debug!("Processed prompt length: {} chars", processed_prompt.len());
+    run.request_options = Some(sent_request_options(settings, &provider, false));
 
-    match crate::llm_client::send_chat_completion(
+    let reply = crate::llm_client::send_chat_completion(
         &provider,
         api_key,
         &model,
         processed_prompt,
         disable_reasoning,
     )
-    .await
-    .map(|reply| reply.text)
-    {
+    .await;
+    match run.read(reply) {
         Ok(Some(content)) => {
             let content = strip_invisible_chars(strip_think_block(&content));
             debug!(
@@ -436,9 +487,14 @@ async fn post_process_transcription(
         }
         Ok(None) => {
             error!("LLM API response has no content");
+            run.error = Some("empty_response");
             PostProcessOutcome::Failed
         }
         Err(e) => {
+            run.error = Some(match e {
+                ChatError::Truncated { .. } => "truncated",
+                ChatError::Failed(_) => "request_failed",
+            });
             error!(
                 "LLM post-processing failed for provider '{}': {}. Falling back to original transcription.",
                 provider.id,
@@ -455,6 +511,8 @@ pub(crate) struct ProcessedTranscription {
     pub post_process_prompt: Option<String>,
     /// `final_text` is the bare transcript because post-processing failed.
     pub post_process_failed: bool,
+    /// `None` when post-processing wasn't asked for, or had no speech.
+    pub post_process_run: Option<PostProcessRun>,
 }
 
 pub(crate) async fn process_transcription_output(
@@ -467,30 +525,46 @@ pub(crate) async fn process_transcription_output(
     let mut post_processed_text: Option<String> = None;
     let mut post_process_prompt: Option<String> = None;
     let mut post_process_failed = false;
+    let mut post_process_run = None;
 
     if post_process {
-        // A reply that's blank once cleaned is no better than none.
-        let outcome = match tokio::time::timeout(
+        let mut run = PostProcessRun::default();
+        let started = Instant::now();
+        let result = tokio::time::timeout(
             POST_PROCESS_TIMEOUT,
-            post_process_transcription(&settings, &final_text),
+            post_process_transcription(&settings, &final_text, &mut run),
         )
-        .await
-        {
-            Ok(PostProcessOutcome::Done(text)) => non_blank_post_processed_text(text)
-                .map_or(PostProcessOutcome::Failed, PostProcessOutcome::Done),
+        .await;
+        // A reply that's blank once cleaned is no better than none.
+        let outcome = match result {
+            Ok(PostProcessOutcome::Done(text)) => match non_blank_post_processed_text(text) {
+                Some(text) => PostProcessOutcome::Done(text),
+                None => {
+                    run.error = Some("empty_response");
+                    PostProcessOutcome::Failed
+                }
+            },
             Ok(outcome) => outcome,
             Err(_) => {
                 warn!(
                     "Post-processing timed out after {:?}; pasting the original transcription",
                     POST_PROCESS_TIMEOUT
                 );
+                run.error = Some("timed_out");
                 PostProcessOutcome::Failed
             }
         };
+        run.duration_ms = started.elapsed().as_millis() as u64;
         match outcome {
             PostProcessOutcome::Skipped => {}
-            PostProcessOutcome::Failed => post_process_failed = true,
+            PostProcessOutcome::Failed => {
+                post_process_failed = true;
+                // Every other failure is a setup that sent no request.
+                run.error.get_or_insert("not_configured");
+                post_process_run = Some(run);
+            }
             PostProcessOutcome::Done(processed_text) => {
+                post_process_run = Some(run);
                 post_processed_text = Some(processed_text.clone());
                 final_text = processed_text;
 
@@ -512,6 +586,7 @@ pub(crate) async fn process_transcription_output(
         post_processed_text,
         post_process_prompt,
         post_process_failed,
+        post_process_run,
     }
 }
 
@@ -790,6 +865,7 @@ impl ShortcutAction for TranscribeAction {
                     // as an error, so it never starts a batch run.
                     let transcription_time = Instant::now();
                     let transcription_result = tm.transcribe_recording(samples);
+                    let transcription_ms = transcription_time.elapsed().as_millis() as u64;
 
                     // Await WAV save and verify
                     let wav_saved = match wav_handle.await {
@@ -826,6 +902,7 @@ impl ShortcutAction for TranscribeAction {
                         Ok(Transcription {
                             text: transcription,
                             language,
+                            decoding,
                         }) => {
                             debug!(
                                 "Transcription completed in {:?}: '{}'",
@@ -861,7 +938,17 @@ impl ShortcutAction for TranscribeAction {
 
                             // Save to history if WAV was saved
                             if wav_saved {
-                                if let Err(err) = hm.save_entry(
+                                let run = TranscriptionRun {
+                                    kind: RunKind::Dictation,
+                                    transcription_text: transcription.clone(),
+                                    language: language.clone(),
+                                    decoding,
+                                    audio_ms: sample_count as u64 / 16,
+                                    transcription_ms,
+                                    post_processed_text: processed.post_processed_text.clone(),
+                                    post_process: processed.post_process_run,
+                                };
+                                match hm.save_entry(
                                     file_name,
                                     transcription,
                                     post_process,
@@ -869,7 +956,15 @@ impl ShortcutAction for TranscribeAction {
                                     processed.post_process_prompt.clone(),
                                     language,
                                 ) {
-                                    error!("Failed to save history entry: {}", err);
+                                    Ok(entry) => {
+                                        if let Err(err) = hm.add_run(entry.id, &run) {
+                                            error!(
+                                                "Failed to save the run of a dictation: {}",
+                                                err
+                                            );
+                                        }
+                                    }
+                                    Err(err) => error!("Failed to save history entry: {}", err),
                                 }
                             }
 
@@ -1117,7 +1212,7 @@ mod tests {
     use super::{
         complete_unless_cancelled, is_blank_transcription, non_blank_post_processed_text,
         post_process_transcription, should_use_streaming_overlay, strip_invisible_chars,
-        strip_think_block, PostProcessOutcome,
+        strip_think_block, PostProcessOutcome, PostProcessRun,
     };
     use crate::settings::{get_default_settings, AppSettings, OverlayStyle};
     use std::future;
@@ -1166,7 +1261,12 @@ mod tests {
     }
 
     fn run_post_process(settings: &AppSettings, transcription: &str) -> PostProcessOutcome {
-        tauri::async_runtime::block_on(post_process_transcription(settings, transcription))
+        let mut run = PostProcessRun::default();
+        tauri::async_runtime::block_on(post_process_transcription(
+            settings,
+            transcription,
+            &mut run,
+        ))
     }
 
     #[test]
@@ -1183,6 +1283,30 @@ mod tests {
             run_post_process(&settings, "hello"),
             PostProcessOutcome::Failed
         );
+    }
+
+    #[test]
+    fn a_failed_post_processing_still_keeps_its_provider_and_prompt() {
+        let settings = post_process_settings(&serve_once("not json"));
+        let mut run = PostProcessRun::default();
+        assert_eq!(
+            tauri::async_runtime::block_on(post_process_transcription(
+                &settings, "hello", &mut run
+            )),
+            PostProcessOutcome::Failed
+        );
+        assert_eq!(
+            run.provider,
+            Some(settings.post_process_provider_id.clone())
+        );
+        assert_eq!(
+            run.prompt,
+            settings
+                .post_process_prompts
+                .first()
+                .map(|p| p.prompt.clone())
+        );
+        assert_eq!(run.error, Some("request_failed"));
     }
 
     #[test]

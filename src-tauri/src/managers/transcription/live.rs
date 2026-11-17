@@ -95,6 +95,7 @@ impl<'a> LiveSession<'a> {
                         setup: *setup,
                         text,
                         model_detected_language,
+                        decode_mode: "live",
                     }))
             }
             LiveDecoder::Chunked(chunks) => finish_chunks(*chunks, recorded_samples),
@@ -130,6 +131,7 @@ fn finish_chunks(
                 setup,
                 text,
                 model_detected_language,
+                decode_mode: "live",
             }))
         }
         Err(EngineError::Cancelled) => Err(EngineError::Cancelled),

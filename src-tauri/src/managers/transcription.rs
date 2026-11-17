@@ -1012,6 +1012,7 @@ impl TranscriptionManager {
             return Ok(Transcription {
                 text: String::new(),
                 language: None,
+                decoding: Decoding::default(),
             });
         }
 
@@ -1023,7 +1024,26 @@ impl TranscriptionManager {
         let language = outcome
             .setup
             .spoken_language(outcome.model_detected_language.as_deref());
+        let decode_mode = outcome.decode_mode;
+        let custom_words_prompted = outcome.setup.custom_words_prompted();
+        let unfiltered_text = outcome.text.clone();
         let final_result = finish_text(outcome, &settings);
+        let vad = if settings.vad_enabled {
+            serde_json::json!(settings.vad_backend)
+        } else {
+            serde_json::json!("off")
+        };
+        let decoding = Decoding {
+            // Read before the model may be unloaded below.
+            model: self.get_current_model(),
+            decode_mode: Some(decode_mode),
+            unfiltered_text: changed_by_filters(unfiltered_text, &final_result),
+            settings: Some(transcription_settings(
+                &settings,
+                vad,
+                custom_words_prompted,
+            )),
+        };
 
         let translation_note = if settings.translate_to_english {
             " (translated)"
@@ -1055,6 +1075,7 @@ impl TranscriptionManager {
         Ok(Transcription {
             text: final_result,
             language: Some(language),
+            decoding,
         })
     }
 
@@ -1178,29 +1199,34 @@ impl TranscriptionManager {
         } = batch;
         // `mark` covers every chunk, so a cancel between two stops the rest.
         // A failed chunk fails the whole transcription.
-        let (transcripts, setup) =
-            match batch_decode(ModelTraits::of(&info), settings.long_form_chunking) {
-                BatchDecode::Chunked => ChunkedDecode::decode_clip(
-                    self,
-                    mark,
-                    ChunkSetup::Ready(Box::new(setup)),
-                    audio,
-                    &active_model,
-                    settings.vad_backend,
-                )
-                .map_err(engine_error)?,
-                BatchDecode::Whole => {
-                    let transcript = self
-                        .run_batch(mark, audio, &setup.run_options, &active_model)
-                        .map_err(engine_error)?;
-                    (vec![transcript], setup)
-                }
-            };
+        let decode = batch_decode(ModelTraits::of(&info), settings.long_form_chunking);
+        let decode_mode = match decode {
+            BatchDecode::Chunked => "chunked",
+            BatchDecode::Whole => "whole",
+        };
+        let (transcripts, setup) = match decode {
+            BatchDecode::Chunked => ChunkedDecode::decode_clip(
+                self,
+                mark,
+                ChunkSetup::Ready(Box::new(setup)),
+                audio,
+                &active_model,
+                settings.vad_backend,
+            )
+            .map_err(engine_error)?,
+            BatchDecode::Whole => {
+                let transcript = self
+                    .run_batch(mark, audio, &setup.run_options, &active_model)
+                    .map_err(engine_error)?;
+                (vec![transcript], setup)
+            }
+        };
         let (text, model_detected_language) = join_chunks(transcripts);
         Ok(RunOutcome {
             setup,
             text,
             model_detected_language,
+            decode_mode,
         })
     }
 
@@ -1246,6 +1272,43 @@ pub struct Transcription {
     /// The language it ran in and how that was chosen; `None` when there was
     /// no audio to run.
     pub language: Option<LanguageDecision>,
+    pub decoding: Decoding,
+}
+
+/// How a transcription was made, for the history to keep with it. All
+/// `None` when there was no audio to run.
+#[derive(Debug, Default)]
+pub struct Decoding {
+    /// The model's id, which names its file and so its quantization.
+    pub model: Option<String>,
+    /// `live` (decoded while recording), `whole` or `chunked`.
+    pub decode_mode: Option<&'static str>,
+    /// The model's text before Handy's filters, only when they changed it.
+    pub unfiltered_text: Option<String>,
+    /// The settings that shaped the text; see `transcription_settings`.
+    pub settings: Option<String>,
+}
+
+/// `unfiltered` when the filters made more of a change than its outer spaces.
+fn changed_by_filters(unfiltered: String, filtered: &str) -> Option<String> {
+    (unfiltered.trim() != filtered.trim()).then_some(unfiltered)
+}
+
+/// The settings that shaped a transcription's text, as JSON for the history.
+/// `vad` is the detector that cut silence out while recording, `"off"` if
+/// none did, or null when that isn't known.
+fn transcription_settings(
+    settings: &AppSettings,
+    vad: serde_json::Value,
+    custom_words_prompted: bool,
+) -> String {
+    serde_json::json!({
+        "vad": vad,
+        "filler_word_removal": settings.filler_word_removal_enabled,
+        "translate_to_english": settings.translate_to_english,
+        "custom_words_prompted": custom_words_prompted,
+    })
+    .to_string()
 }
 
 /// What one transcription decoded (live or in batch), with how its runs were
@@ -1255,6 +1318,8 @@ struct RunOutcome {
     text: String,
     /// The language the model itself detected, if it reported one.
     model_detected_language: Option<String>,
+    /// How it was decoded; see [`Decoding::decode_mode`].
+    decode_mode: &'static str,
 }
 
 /// One transcription's final text: its output language resolved, then
@@ -1264,6 +1329,7 @@ fn finish_text(outcome: RunOutcome, settings: &AppSettings) -> String {
         setup,
         text,
         model_detected_language,
+        ..
     } = outcome;
     let output_language = setup.output_language(settings, model_detected_language);
     debug!("Output language evidence: {:?}", output_language);
