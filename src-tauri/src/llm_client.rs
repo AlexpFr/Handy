@@ -5,8 +5,61 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::error::Error as StdError;
+use std::fmt;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
+
+#[derive(Debug, Default)]
+pub struct ChatReply {
+    pub text: Option<String>,
+    pub meta: ReplyMeta,
+}
+
+/// What a reply reports besides its text, the same for every API format so
+/// the history keeps them alike. A count or name the endpoint doesn't give
+/// is `None`, never 0.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct ReplyMeta {
+    pub model: Option<String>,
+    /// Why the model stopped, in the endpoint's own words.
+    pub stop_reason: Option<String>,
+    /// Input tokens read neither from nor into the cache.
+    pub input_tokens: Option<u64>,
+    /// Output tokens, the model's thinking included.
+    pub output_tokens: Option<u64>,
+    pub cache_read_tokens: Option<u64>,
+    pub cache_write_tokens: Option<u64>,
+    pub thinking_tokens: Option<u64>,
+}
+
+/// Why a chat completion gave no reply to use.
+#[derive(Debug)]
+pub enum ChatError {
+    /// The reply was cut off at the output token limit. It was still billed,
+    /// so what it said about itself is kept.
+    Truncated {
+        message: String,
+        meta: Box<ReplyMeta>,
+    },
+    /// The request failed, or the endpoint refused it or answered unreadably.
+    Failed(String),
+}
+
+impl From<String> for ChatError {
+    fn from(message: String) -> Self {
+        ChatError::Failed(message)
+    }
+}
+
+impl fmt::Display for ChatError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ChatError::Truncated { message, .. } | ChatError::Failed(message) => {
+                formatter.write_str(message)
+            }
+        }
+    }
+}
 
 #[derive(Debug, Serialize)]
 struct ChatMessage {
@@ -151,7 +204,11 @@ struct AnthropicMessagesRequest {
 #[derive(Debug, Deserialize)]
 struct AnthropicMessagesResponse {
     content: Vec<AnthropicContentBlock>,
+    model: Option<String>,
     stop_reason: Option<String>,
+    /// Token counts. Kept loose: an endpoint that shapes them differently
+    /// must not fail the response.
+    usage: Option<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -166,7 +223,8 @@ enum AnthropicContentBlock {
 }
 
 impl AnthropicMessagesResponse {
-    fn into_text(self) -> Option<String> {
+    fn into_reply(self) -> ChatReply {
+        let meta = self.meta();
         let text: String = self
             .content
             .into_iter()
@@ -175,7 +233,28 @@ impl AnthropicMessagesResponse {
                 AnthropicContentBlock::Other => None,
             })
             .collect();
-        (!text.is_empty()).then_some(text)
+        ChatReply {
+            text: (!text.is_empty()).then_some(text),
+            meta,
+        }
+    }
+
+    /// This format already counts cached input apart from `input_tokens`.
+    fn meta(&self) -> ReplyMeta {
+        let tokens = |path: &[&str]| {
+            path.iter()
+                .try_fold(self.usage.as_ref()?, |value, key| value.get(key))
+                .and_then(Value::as_u64)
+        };
+        ReplyMeta {
+            model: self.model.clone(),
+            stop_reason: self.stop_reason.clone(),
+            input_tokens: tokens(&["input_tokens"]),
+            output_tokens: tokens(&["output_tokens"]),
+            cache_read_tokens: tokens(&["cache_read_input_tokens"]),
+            cache_write_tokens: tokens(&["cache_creation_input_tokens"]),
+            thinking_tokens: tokens(&["output_tokens_details", "thinking_tokens"]),
+        }
     }
 }
 
@@ -372,15 +451,14 @@ fn report_reqwest_error(context: &str, error: &reqwest::Error) -> String {
 }
 
 /// Send a chat completion request to an OpenAI-compatible API
-/// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
-/// or Err on actual errors (HTTP, parsing, etc.)
+/// The reply's text is `None` when the response has no content.
 pub async fn send_chat_completion(
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
     prompt: String,
     disable_reasoning: bool,
-) -> Result<Option<String>, String> {
+) -> Result<ChatReply, ChatError> {
     if provider.api_format == PostProcessApiFormat::Anthropic {
         return send_anthropic_message(provider, api_key, model, prompt).await;
     }
@@ -415,7 +493,7 @@ pub async fn send_chat_completion_with_schema(
     system_prompt: Option<String>,
     json_schema: Option<Value>,
     disable_reasoning: bool,
-) -> Result<Option<String>, String> {
+) -> Result<ChatReply, ChatError> {
     let base_url = provider.base_url.trim_end_matches('/');
     let url = format!("{}/chat/completions", base_url);
 
@@ -525,10 +603,7 @@ pub async fn send_chat_completion_with_schema(
             .text()
             .await
             .unwrap_or_else(|e| report_reqwest_error("Failed to read API error response", &e));
-        return Err(format!(
-            "API request failed with status {}: {}",
-            status, error_text
-        ));
+        return Err(format!("API request failed with status {}: {}", status, error_text).into());
     }
 
     let completion: ChatCompletionResponse = response
@@ -537,17 +612,27 @@ pub async fn send_chat_completion_with_schema(
         .map_err(|e| report_reqwest_error("Failed to parse API response", &e))?;
 
     let Some(choice) = completion.choices.into_iter().next() else {
-        return Ok(None);
+        return Ok(ChatReply::default());
     };
 
     // A response cut off at the provider's output limit is incomplete; pasting
     // it would silently drop the end of the dictation (or, for structured
     // output, paste unparseable JSON).
-    if choice.finish_reason.as_deref() == Some("length") {
-        return Err("Response was truncated at the provider's output token limit".to_string());
+    let meta = ReplyMeta {
+        stop_reason: choice.finish_reason,
+        ..ReplyMeta::default()
+    };
+    if meta.stop_reason.as_deref() == Some("length") {
+        return Err(ChatError::Truncated {
+            message: "Response was truncated at the provider's output token limit".to_string(),
+            meta: Box::new(meta),
+        });
     }
 
-    Ok(choice.message.content)
+    Ok(ChatReply {
+        text: choice.message.content,
+        meta,
+    })
 }
 
 /// Send a single-prompt request to an Anthropic Messages API (`/messages`).
@@ -560,7 +645,7 @@ async fn send_anthropic_message(
     api_key: String,
     model: &str,
     prompt: String,
-) -> Result<Option<String>, String> {
+) -> Result<ChatReply, ChatError> {
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
 
     debug!(
@@ -596,10 +681,7 @@ async fn send_anthropic_message(
             .text()
             .await
             .unwrap_or_else(|e| report_reqwest_error("Failed to read API error response", &e));
-        return Err(format!(
-            "API request failed with status {}: {}",
-            status, error_text
-        ));
+        return Err(format!("API request failed with status {}: {}", status, error_text).into());
     }
 
     let message: AnthropicMessagesResponse = response
@@ -610,13 +692,16 @@ async fn send_anthropic_message(
     // A response cut off at the token budget is incomplete; pasting it would
     // silently drop the end of the dictation.
     if message.stop_reason.as_deref() == Some("max_tokens") {
-        return Err(format!(
-            "Response was truncated at the {} token limit",
-            ANTHROPIC_MAX_TOKENS
-        ));
+        return Err(ChatError::Truncated {
+            message: format!(
+                "Response was truncated at the {} token limit",
+                ANTHROPIC_MAX_TOKENS
+            ),
+            meta: Box::new(message.into_reply().meta),
+        });
     }
 
-    Ok(message.into_text())
+    Ok(message.into_reply())
 }
 
 /// Fetch available models from an OpenAI-compatible API
@@ -939,10 +1024,36 @@ mod tests {
             r#"{"content":[{"type":"thinking","thinking":"hmm"},{"type":"text","text":"Hello"},{"type":"text","text":" world"}]}"#,
         )
         .unwrap();
-        assert_eq!(response.into_text().as_deref(), Some("Hello world"));
+        assert_eq!(response.into_reply().text.as_deref(), Some("Hello world"));
 
         let empty: AnthropicMessagesResponse = serde_json::from_str(r#"{"content":[]}"#).unwrap();
-        assert_eq!(empty.into_text(), None);
+        assert_eq!(empty.into_reply().text, None);
+    }
+
+    #[test]
+    fn anthropic_response_reports_only_the_counts_it_has() {
+        let response: AnthropicMessagesResponse = serde_json::from_str(
+            r#"{"content":[],"model":"claude-x","stop_reason":"end_turn","usage":{"input_tokens":12,"output_tokens":40,"cache_creation_input_tokens":1500,"cache_read_input_tokens":null,"output_tokens_details":{"thinking_tokens":25}}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            response.meta(),
+            ReplyMeta {
+                model: Some("claude-x".to_string()),
+                stop_reason: Some("end_turn".to_string()),
+                input_tokens: Some(12),
+                output_tokens: Some(40),
+                cache_read_tokens: None,
+                cache_write_tokens: Some(1500),
+                thinking_tokens: Some(25),
+            }
+        );
+
+        // An endpoint that reports usage its own way still gets its text read.
+        for body in [r#"{"content":[]}"#, r#"{"content":[],"usage":"none"}"#] {
+            let response: AnthropicMessagesResponse = serde_json::from_str(body).unwrap();
+            assert_eq!(response.meta(), ReplyMeta::default());
+        }
     }
 
     #[tokio::test]
@@ -960,7 +1071,7 @@ mod tests {
             true,
         )
         .await;
-        assert_eq!(result, Ok(Some("Cleaned text".to_string())));
+        assert_eq!(result.unwrap().text.as_deref(), Some("Cleaned text"));
     }
 
     #[tokio::test]
@@ -978,7 +1089,7 @@ mod tests {
             false,
         )
         .await;
-        assert!(result.unwrap_err().contains("truncated"));
+        assert!(matches!(result, Err(ChatError::Truncated { .. })));
     }
 
     #[tokio::test]
@@ -996,6 +1107,11 @@ mod tests {
             true,
         )
         .await;
-        assert!(result.unwrap_err().contains("truncated"));
+        let Err(ChatError::Truncated { message, meta }) = result else {
+            panic!("expected a truncation");
+        };
+        // A truncated reply was billed: what it said about itself is kept.
+        assert_eq!(meta.stop_reason.as_deref(), Some("max_tokens"));
+        assert!(message.contains("truncated"));
     }
 }

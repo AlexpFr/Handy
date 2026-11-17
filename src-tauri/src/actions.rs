@@ -366,6 +366,7 @@ async fn post_process_transcription(
             disable_reasoning,
         )
         .await
+        .map(|reply| reply.text)
         {
             Ok(Some(content)) => {
                 // Parse the JSON response to extract the transcription field
@@ -422,6 +423,7 @@ async fn post_process_transcription(
         disable_reasoning,
     )
     .await
+    .map(|reply| reply.text)
     {
         Ok(Some(content)) => {
             let content = strip_invisible_chars(strip_think_block(&content));
