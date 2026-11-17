@@ -12,13 +12,13 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 
 use crate::actions::process_transcription_output;
 use crate::audio_toolkit::{decode_audio_file, read_wav_samples, save_wav_file};
-use crate::managers::history::{HistoryEntry, HistoryManager};
+use crate::managers::history::{HistoryEntry, HistoryManager, RunKind, TranscriptionRun};
 use crate::managers::transcription::{
     panic_payload_message, ChunkControl, Transcription, TranscriptionManager,
 };
@@ -226,13 +226,16 @@ impl TranscriptionJobManager {
 
     fn run_jobs(&self) {
         loop {
-            let (entry_id, cancelled) = {
+            let (entry_id, kind, cancelled) = {
                 let mut jobs = self.lock();
-                let entry_id = loop {
-                    if let Some(entry_id) =
-                        jobs.retries.pop_front().or_else(|| jobs.files.pop_front())
+                let (entry_id, kind) = loop {
+                    if let Some(job) = jobs
+                        .retries
+                        .pop_front()
+                        .map(|entry_id| (entry_id, RunKind::Retry))
+                        .or_else(|| jobs.files.pop_front().map(|id| (id, RunKind::File)))
                     {
-                        break entry_id;
+                        break job;
                     }
                     jobs = self
                         .wake
@@ -244,14 +247,16 @@ impl TranscriptionJobManager {
                     entry_id,
                     cancelled: Arc::clone(&cancelled),
                 });
-                (entry_id, cancelled)
+                (entry_id, kind, cancelled)
             };
             self.emit(entry_id, TranscriptionJobStatus::Running { percent: 0 });
 
             // A panic fails only this job; the rest of the loop still has to
             // run, or the model would stay held and the queue stuck.
-            let result = catch_unwind(AssertUnwindSafe(|| self.run_job(entry_id, &cancelled)))
-                .unwrap_or_else(|payload| Err(crashed(payload.as_ref())));
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                self.run_job(entry_id, kind, &cancelled)
+            }))
+            .unwrap_or_else(|payload| Err(crashed(payload.as_ref())));
 
             let idle = {
                 let mut jobs = self.lock();
@@ -298,7 +303,7 @@ impl TranscriptionJobManager {
         }
     }
 
-    fn run_job(&self, entry_id: i64, cancelled: &AtomicBool) -> Result<JobEnd> {
+    fn run_job(&self, entry_id: i64, kind: RunKind, cancelled: &AtomicBool) -> Result<JobEnd> {
         let hm = Arc::clone(&self.app.state::<Arc<HistoryManager>>());
         let tm = Arc::clone(&self.app.state::<Arc<TranscriptionManager>>());
         let entry = tauri::async_runtime::block_on(hm.get_entry_by_id(entry_id))?
@@ -315,11 +320,17 @@ impl TranscriptionJobManager {
             cancelled,
             percent: Cell::new(0),
         };
-        let Some(Transcription { text, language, .. }) =
-            tm.transcribe_in_chunks(samples, &control)?
+        let audio_ms = samples.len() as u64 / 16;
+        let started = Instant::now();
+        let Some(Transcription {
+            text,
+            language,
+            decoding,
+        }) = tm.transcribe_in_chunks(samples, &control)?
         else {
             return Ok(JobEnd::Cancelled);
         };
+        let transcription_ms = started.elapsed().as_millis() as u64;
         if text.is_empty() {
             return Err(anyhow!("Recording contains no speech"));
         }
@@ -337,6 +348,17 @@ impl TranscriptionJobManager {
             return Ok(JobEnd::Cancelled);
         }
         let post_process_failed = processed.post_process_failed;
+        // The entry takes this run's texts; the run is kept beside the others.
+        let run = TranscriptionRun {
+            kind,
+            transcription_text: text.clone(),
+            language: language.clone(),
+            decoding,
+            audio_ms,
+            transcription_ms,
+            post_processed_text: processed.post_processed_text.clone(),
+            post_process: processed.post_process_run,
+        };
         hm.update_transcription(
             entry.id,
             text,
@@ -344,6 +366,12 @@ impl TranscriptionJobManager {
             processed.post_process_prompt,
             language,
         )?;
+        if let Err(e) = hm.add_run(entry.id, &run) {
+            error!(
+                "Failed to save the run of history entry {}: {}",
+                entry.id, e
+            );
+        }
         Ok(JobEnd::Finished {
             post_process_failed,
         })

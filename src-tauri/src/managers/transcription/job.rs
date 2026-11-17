@@ -7,8 +7,9 @@ use std::time::Instant;
 use transcribe_cpp::Transcript;
 
 use super::{
-    agreed_language, engine_error, post_process_transcription_text, real_time_factor, BatchContext,
-    Decoding, Transcription, TranscriptionManager,
+    agreed_language, changed_by_filters, engine_error, post_process_transcription_text,
+    real_time_factor, transcription_settings, BatchContext, Decoding, Transcription,
+    TranscriptionManager,
 };
 use crate::audio_toolkit::chunking::Chunker;
 use crate::engine_supervisor::EngineError;
@@ -107,6 +108,13 @@ impl TranscriptionManager {
 
         debug!("Transcribed {} chunks in the background", transcripts.len());
         let language = setup.spoken_language(agreed_language(&transcripts).as_deref());
+        // Assembled the way the paragraphs are, to compare with them.
+        let unfiltered_text = transcripts
+            .iter()
+            .map(|t| t.text.trim())
+            .filter(|t| !t.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n");
         let paragraphs: Vec<String> = transcripts
             .into_iter()
             .map(|t| {
@@ -131,10 +139,23 @@ impl TranscriptionManager {
             elapsed_secs,
             real_time_factor(audio_secs, elapsed_secs)
         );
+        let text = paragraphs.join("\n\n");
+        let decoding = Decoding {
+            unfiltered_text: changed_by_filters(unfiltered_text, &text),
+            // Whether silence was cut out of the recording is the dictation's
+            // to tell (a file's never was): VAD here only picks where to cut.
+            settings: Some(transcription_settings(
+                &settings,
+                serde_json::Value::Null,
+                setup.custom_words_prompted(),
+            )),
+            model: Some(active_model),
+            decode_mode: Some("chunked"),
+        };
         Ok(Some(Transcription {
-            text: paragraphs.join("\n\n"),
+            text,
             language: Some(language),
-            decoding: Decoding::default(),
+            decoding,
         }))
     }
 }

@@ -134,12 +134,16 @@ pub struct HistoryEntry {
 #[derive(Clone, Copy, Debug)]
 pub enum RunKind {
     Dictation,
+    Retry,
+    File,
 }
 
 impl RunKind {
     fn as_str(self) -> &'static str {
         match self {
             RunKind::Dictation => "dictation",
+            RunKind::Retry => "retry",
+            RunKind::File => "file",
         }
     }
 }
