@@ -943,7 +943,7 @@ impl ShortcutAction for TranscribeAction {
                                     transcription_text: transcription.clone(),
                                     language: language.clone(),
                                     decoding,
-                                    audio_ms: sample_count as u64 / 16,
+                                    audio_ms: TranscriptionRun::audio_ms(sample_count),
                                     transcription_ms,
                                     post_processed_text: processed.post_processed_text.clone(),
                                     post_process: processed.post_process_run,

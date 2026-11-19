@@ -320,7 +320,7 @@ impl TranscriptionJobManager {
             cancelled,
             percent: Cell::new(0),
         };
-        let audio_ms = samples.len() as u64 / 16;
+        let audio_ms = TranscriptionRun::audio_ms(samples.len());
         let started = Instant::now();
         let Some(Transcription {
             text,

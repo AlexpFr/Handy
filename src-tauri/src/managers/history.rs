@@ -164,6 +164,51 @@ pub struct TranscriptionRun {
     pub post_process: Option<PostProcessRun>,
 }
 
+impl TranscriptionRun {
+    /// The `audio_ms` of `sample_count` samples of 16 kHz audio.
+    pub fn audio_ms(sample_count: usize) -> u64 {
+        sample_count as u64 / 16
+    }
+
+    /// The run's columns besides `id`, `history_id` and post-processing, as
+    /// they are written now.
+    fn columns(&self) -> RunColumns<'_> {
+        let (language, language_source) = split_language(self.language.clone());
+        RunColumns {
+            kind: self.kind.as_str(),
+            timestamp: Utc::now().timestamp(),
+            app_version: env!("CARGO_PKG_VERSION"),
+            language,
+            language_source: language_source.map(LanguageSource::as_str),
+            transcription_text: &self.transcription_text,
+            model: self.decoding.model.as_deref(),
+            decode_mode: self.decoding.decode_mode,
+            audio_ms: self.audio_ms,
+            transcription_ms: self.transcription_ms,
+            unfiltered_text: self.decoding.unfiltered_text.as_deref(),
+            transcription_settings: self.decoding.settings.as_deref(),
+        }
+    }
+}
+
+/// A run's columns of [`RUNS_SCHEMA`] besides `id`, `history_id` and
+/// post-processing, named as they are. `None` is `NULL`.
+pub struct RunColumns<'a> {
+    pub kind: &'static str,
+    pub timestamp: i64,
+    pub app_version: &'static str,
+    pub language: Option<String>,
+    pub language_source: Option<&'static str>,
+    pub transcription_text: &'a str,
+    pub model: Option<&'a str>,
+    pub decode_mode: Option<&'static str>,
+    pub audio_ms: u64,
+    pub transcription_ms: u64,
+    pub unfiltered_text: Option<&'a str>,
+    /// A JSON object's text, as stored.
+    pub transcription_settings: Option<&'a str>,
+}
+
 pub struct HistoryManager {
     app_handle: AppHandle,
     recordings_dir: PathBuf,
@@ -470,7 +515,7 @@ impl HistoryManager {
     }
 
     fn insert_run(conn: &Connection, history_id: i64, run: &TranscriptionRun) -> Result<()> {
-        let (language, language_source) = split_language(run.language.clone());
+        let columns = run.columns();
         let post_process = run.post_process.as_ref();
         let reply = post_process.map(|post_process| &post_process.reply);
         conn.execute(
@@ -491,20 +536,20 @@ impl HistoryManager {
             )",
             named_params! {
                 ":history_id": history_id,
-                ":timestamp": Utc::now().timestamp(),
-                ":kind": run.kind.as_str(),
-                ":language": language,
-                ":language_source": language_source.map(LanguageSource::as_str),
-                ":transcription_text": &run.transcription_text,
+                ":timestamp": columns.timestamp,
+                ":kind": columns.kind,
+                ":language": columns.language,
+                ":language_source": columns.language_source,
+                ":transcription_text": columns.transcription_text,
                 ":post_processed_text": &run.post_processed_text,
                 ":post_process_prompt": post_process.and_then(|p| p.prompt.as_deref()),
-                ":app_version": env!("CARGO_PKG_VERSION"),
-                ":model": &run.decoding.model,
-                ":decode_mode": run.decoding.decode_mode,
-                ":audio_ms": run.audio_ms,
-                ":transcription_ms": run.transcription_ms,
-                ":unfiltered_text": &run.decoding.unfiltered_text,
-                ":transcription_settings": &run.decoding.settings,
+                ":app_version": columns.app_version,
+                ":model": columns.model,
+                ":decode_mode": columns.decode_mode,
+                ":audio_ms": columns.audio_ms,
+                ":transcription_ms": columns.transcription_ms,
+                ":unfiltered_text": columns.unfiltered_text,
+                ":transcription_settings": columns.transcription_settings,
                 ":post_process_provider": post_process.and_then(|p| p.provider.as_deref()),
                 ":response_model": reply.and_then(|r| r.model.as_deref()),
                 ":request_options": post_process.and_then(|p| p.request_options.as_deref()),
