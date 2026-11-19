@@ -136,7 +136,7 @@ pub enum RunKind {
     Dictation,
     Retry,
     File,
-    /// A run that `--rerun-transcription` keeps.
+    /// A run that `--rerun-transcription` or `--rerun-post-process` keeps.
     Cli,
 }
 
@@ -275,6 +275,12 @@ pub struct StoredRun<'a> {
     pub columns: RunColumns<'a>,
     #[serde(flatten)]
     pub post_process: PostProcessColumns<'a>,
+}
+
+/// The run a post-processing is redone from.
+pub struct SourceRun {
+    pub history_id: i64,
+    pub transcription_text: String,
 }
 
 pub struct HistoryManager {
@@ -646,6 +652,24 @@ impl HistoryManager {
             columns,
             post_process,
         })
+    }
+
+    /// The entry and text of the run `id`, or `None` when there's no such
+    /// run.
+    pub fn get_source_run(&self, id: i64) -> Result<Option<SourceRun>> {
+        let conn = self.get_connection()?;
+        Ok(conn
+            .query_row(
+                "SELECT history_id, transcription_text FROM transcription_history_runs WHERE id = ?1",
+                [id],
+                |row| {
+                    Ok(SourceRun {
+                        history_id: row.get("history_id")?,
+                        transcription_text: row.get("transcription_text")?,
+                    })
+                },
+            )
+            .optional()?)
     }
 
     /// Update an existing history entry with new transcription results (used by retry).

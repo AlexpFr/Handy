@@ -44,9 +44,21 @@ pub struct CliArgs {
         long,
         value_name = "ENTRIES",
         requires = "model",
-        conflicts_with_all = ["transcribe_file", "device_index", "repeat", "list_devices", "list_models"]
+        conflicts_with_all = ["transcribe_file", "rerun_post_process", "device_index", "repeat", "list_devices", "list_models"]
     )]
     pub rerun_transcription: Option<PathBuf>,
+
+    /// Post-process again the transcription_text of each history run listed
+    /// in this file, one run id per line, as a dictation does, and keep each
+    /// result as a new run of the same entry (kind `cli`, no transcription):
+    /// one JSON line per run. Every setting is the profile's. Exits 3 if any
+    /// run failed.
+    #[arg(
+        long,
+        value_name = "RUNS",
+        conflicts_with_all = ["transcribe_file", "model", "device_index", "repeat", "list_devices", "list_models"]
+    )]
+    pub rerun_post_process: Option<PathBuf>,
 
     /// Model id to load for --transcribe-file (default: the selected model).
     /// Required by --rerun-transcription.

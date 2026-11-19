@@ -781,6 +781,83 @@ fn rerun_entry_transcription(
     Ok(serde_json::json!({ "entry": entry_id, "run": stored }))
 }
 
+/// `--rerun-post-process`: post-process each listed run's
+/// `transcription_text` again, as a dictation does, and keep the result as
+/// a new run of the same entry. One JSON line per run as soon as it is
+/// done; exit code 3 if any run failed. A post-processing that fails is
+/// kept like a dictation's, with its error code: it isn't a failure here.
+fn run_headless_rerun_post_process(app: &AppHandle, list: &std::path::Path) -> i32 {
+    let contents = match read_list(list) {
+        Ok(contents) => contents,
+        Err(code) => return code,
+    };
+    let hm = match HistoryManager::new(app) {
+        Ok(hm) => hm,
+        Err(e) => {
+            eprintln!("error: cannot open the history: {}", e);
+            return 1;
+        }
+    };
+    print_line(&serde_json::json!({
+        "history_db": hm.db_path().display().to_string(),
+    }));
+
+    let mut failed = false;
+    for item in list_items(&contents) {
+        let line = match item.parse::<i64>() {
+            Ok(run_id) => match rerun_post_process(app, &hm, run_id) {
+                Ok(line) => line,
+                Err(e) => {
+                    failed = true;
+                    serde_json::json!({ "source_run": run_id, "error": e })
+                }
+            },
+            Err(_) => {
+                failed = true;
+                serde_json::json!({ "source_run": item, "error": "not a run id" })
+            }
+        };
+        print_line(&line);
+    }
+    if failed {
+        3
+    } else {
+        0
+    }
+}
+
+/// One run of `--rerun-post-process`: its line, once the new run is kept.
+fn rerun_post_process(
+    app: &AppHandle,
+    hm: &HistoryManager,
+    run_id: i64,
+) -> Result<serde_json::Value, String> {
+    let source = hm
+        .get_source_run(run_id)
+        .map_err(|e| format!("cannot read the run: {}", e))?
+        .ok_or_else(|| "no such run".to_string())?;
+    let processed = tauri::async_runtime::block_on(actions::process_transcription_output(
+        app,
+        &source.transcription_text,
+        true,
+    ));
+    let run = TranscriptionRun {
+        kind: RunKind::Cli,
+        transcription_text: source.transcription_text,
+        transcription: None,
+        post_processed_text: processed.post_processed_text,
+        post_process: processed.post_process_run,
+    };
+    let stored = hm
+        .add_run(source.history_id, &run)
+        .map_err(|e| format!("cannot write the run: {}", e))?;
+    Ok(serde_json::json!({
+        "source_run": run_id,
+        "entry": source.history_id,
+        "run": stored,
+    }))
+}
+
 /// Transcribe `wav` with the model `model_id` as `--transcribe-file`
 /// transcribes a file, into a run of kind `cli`.
 fn transcribe_wav(
@@ -1017,6 +1094,7 @@ pub fn run(cli_args: CliArgs) {
     // note below), not forward to an already-running app.
     let headless_mode = cli_args.transcribe_file.is_some()
         || cli_args.rerun_transcription.is_some()
+        || cli_args.rerun_post_process.is_some()
         || cli_args.list_devices
         || cli_args.list_models;
 
@@ -1153,7 +1231,8 @@ pub fn run(cli_args: CliArgs) {
             // thread and exit. Deliberately skips the window, tray, overlay, audio
             // recorder (so it never opens the mic, even with always_on_microphone),
             // signal handlers, and autostart that initialize_core_logic sets up.
-            // --rerun-transcription opens the history itself.
+            // --rerun-transcription and --rerun-post-process open the history
+            // themselves.
             if headless_mode {
                 let app_handle = app.handle().clone();
                 let model_manager = Arc::new(
@@ -1173,6 +1252,8 @@ pub fn run(cli_args: CliArgs) {
                     let code = run_headless_guarded(|| {
                         if let Some(list) = &args.rerun_transcription {
                             run_headless_rerun_transcription(&handle, &args, list)
+                        } else if let Some(list) = &args.rerun_post_process {
+                            run_headless_rerun_post_process(&handle, list)
                         } else {
                             run_headless_transcription(&handle, &args)
                         }
