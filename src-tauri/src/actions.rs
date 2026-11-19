@@ -4,7 +4,7 @@ use crate::audio_feedback::{play_feedback_sound, play_feedback_sound_blocking, S
 use crate::audio_toolkit::VadPolicy;
 use crate::llm_client::{ChatError, ChatReply, ReplyMeta};
 use crate::managers::audio::{recording_notice_code, AudioRecordingManager};
-use crate::managers::history::{HistoryManager, RunKind, TranscriptionRun};
+use crate::managers::history::{HistoryManager, RunKind, RunTranscription, TranscriptionRun};
 use crate::managers::model::ModelManager;
 use crate::managers::transcription::policy::{live_decode, LiveDecode, ModelTraits};
 use crate::managers::transcription::StreamWorkKind;
@@ -941,10 +941,12 @@ impl ShortcutAction for TranscribeAction {
                                 let run = TranscriptionRun {
                                     kind: RunKind::Dictation,
                                     transcription_text: transcription.clone(),
-                                    language: language.clone(),
-                                    decoding,
-                                    audio_ms: TranscriptionRun::audio_ms(sample_count),
-                                    transcription_ms,
+                                    transcription: Some(RunTranscription {
+                                        language: language.clone(),
+                                        decoding,
+                                        audio_ms: TranscriptionRun::audio_ms(sample_count),
+                                        transcription_ms,
+                                    }),
                                     post_processed_text: processed.post_processed_text.clone(),
                                     post_process: processed.post_process_run,
                                 };

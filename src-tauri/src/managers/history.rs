@@ -148,20 +148,28 @@ impl RunKind {
     }
 }
 
-/// One transcription of an entry and its post-processing; see
-/// [`RUNS_SCHEMA`].
+/// One transcription of an entry and its post-processing, or one
+/// post-processing of a text it was given; see [`RUNS_SCHEMA`].
 pub struct TranscriptionRun {
     pub kind: RunKind,
+    /// The text transcribed, or, for a run that transcribed nothing, the
+    /// text it post-processed.
     pub transcription_text: String,
+    /// `None` for a run that only post-processed `transcription_text`.
+    pub transcription: Option<RunTranscription>,
+    pub post_processed_text: Option<String>,
+    /// `None` when post-processing wasn't asked for, or had no speech.
+    pub post_process: Option<PostProcessRun>,
+}
+
+/// How a run's text was transcribed.
+pub struct RunTranscription {
     pub language: Option<LanguageDecision>,
     pub decoding: Decoding,
     /// Of the audio the model got.
     pub audio_ms: u64,
     /// For a retry, waiting for the model to load is part of it.
     pub transcription_ms: u64,
-    pub post_processed_text: Option<String>,
-    /// `None` when post-processing wasn't asked for, or had no speech.
-    pub post_process: Option<PostProcessRun>,
 }
 
 impl TranscriptionRun {
@@ -171,9 +179,13 @@ impl TranscriptionRun {
     }
 
     /// The run's columns besides `id`, `history_id` and post-processing, as
-    /// they are written now.
+    /// they are written now. The transcription's are `NULL` when the run
+    /// did none.
     fn columns(&self) -> RunColumns<'_> {
-        let (language, language_source) = split_language(self.language.clone());
+        let transcription = self.transcription.as_ref();
+        let decoding = transcription.map(|transcription| &transcription.decoding);
+        let (language, language_source) =
+            split_language(transcription.and_then(|transcription| transcription.language.clone()));
         RunColumns {
             kind: self.kind.as_str(),
             timestamp: Utc::now().timestamp(),
@@ -181,12 +193,12 @@ impl TranscriptionRun {
             language,
             language_source: language_source.map(LanguageSource::as_str),
             transcription_text: &self.transcription_text,
-            model: self.decoding.model.as_deref(),
-            decode_mode: self.decoding.decode_mode,
-            audio_ms: self.audio_ms,
-            transcription_ms: self.transcription_ms,
-            unfiltered_text: self.decoding.unfiltered_text.as_deref(),
-            transcription_settings: self.decoding.settings.as_deref(),
+            model: decoding.and_then(|decoding| decoding.model.as_deref()),
+            decode_mode: decoding.and_then(|decoding| decoding.decode_mode),
+            audio_ms: transcription.map(|transcription| transcription.audio_ms),
+            transcription_ms: transcription.map(|transcription| transcription.transcription_ms),
+            unfiltered_text: decoding.and_then(|decoding| decoding.unfiltered_text.as_deref()),
+            transcription_settings: decoding.and_then(|decoding| decoding.settings.as_deref()),
         }
     }
 }
@@ -202,8 +214,8 @@ pub struct RunColumns<'a> {
     pub transcription_text: &'a str,
     pub model: Option<&'a str>,
     pub decode_mode: Option<&'static str>,
-    pub audio_ms: u64,
-    pub transcription_ms: u64,
+    pub audio_ms: Option<u64>,
+    pub transcription_ms: Option<u64>,
     pub unfiltered_text: Option<&'a str>,
     /// A JSON object's text, as stored.
     pub transcription_settings: Option<&'a str>,
@@ -997,10 +1009,12 @@ mod tests {
         let run = TranscriptionRun {
             kind: RunKind::Dictation,
             transcription_text: "hello".to_string(),
-            language: None,
-            decoding: Decoding::default(),
-            audio_ms: 1000,
-            transcription_ms: 100,
+            transcription: Some(RunTranscription {
+                language: None,
+                decoding: Decoding::default(),
+                audio_ms: 1000,
+                transcription_ms: 100,
+            }),
             post_processed_text: None,
             post_process: None,
         };

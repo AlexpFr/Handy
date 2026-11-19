@@ -18,7 +18,9 @@ use tauri_specta::Event;
 
 use crate::actions::process_transcription_output;
 use crate::audio_toolkit::{decode_audio_file, read_wav_samples, save_wav_file};
-use crate::managers::history::{HistoryEntry, HistoryManager, RunKind, TranscriptionRun};
+use crate::managers::history::{
+    HistoryEntry, HistoryManager, RunKind, RunTranscription, TranscriptionRun,
+};
 use crate::managers::transcription::{
     panic_payload_message, ChunkControl, Transcription, TranscriptionManager,
 };
@@ -352,10 +354,12 @@ impl TranscriptionJobManager {
         let run = TranscriptionRun {
             kind,
             transcription_text: text.clone(),
-            language: language.clone(),
-            decoding,
-            audio_ms,
-            transcription_ms,
+            transcription: Some(RunTranscription {
+                language: language.clone(),
+                decoding,
+                audio_ms,
+                transcription_ms,
+            }),
             post_processed_text: processed.post_processed_text.clone(),
             post_process: processed.post_process_run,
         };
