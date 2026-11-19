@@ -201,10 +201,32 @@ impl TranscriptionRun {
             transcription_settings: decoding.and_then(|decoding| decoding.settings.as_deref()),
         }
     }
+
+    /// The run's post-processing columns, all `NULL` when it had none.
+    fn post_process_columns(&self) -> PostProcessColumns<'_> {
+        let post_process = self.post_process.as_ref();
+        let reply = post_process.map(|post_process| &post_process.reply);
+        PostProcessColumns {
+            post_processed_text: self.post_processed_text.as_deref(),
+            post_process_prompt: post_process.and_then(|p| p.prompt.as_deref()),
+            post_process_provider: post_process.and_then(|p| p.provider.as_deref()),
+            response_model: reply.and_then(|r| r.model.as_deref()),
+            request_options: post_process.and_then(|p| p.request_options.as_deref()),
+            stop_reason: reply.and_then(|r| r.stop_reason.as_deref()),
+            post_process_error: post_process.and_then(|p| p.error),
+            post_process_ms: post_process.map(|p| p.duration_ms),
+            input_tokens: reply.and_then(|r| r.input_tokens),
+            output_tokens: reply.and_then(|r| r.output_tokens),
+            cache_read_tokens: reply.and_then(|r| r.cache_read_tokens),
+            cache_write_tokens: reply.and_then(|r| r.cache_write_tokens),
+            thinking_tokens: reply.and_then(|r| r.thinking_tokens),
+        }
+    }
 }
 
 /// A run's columns of [`RUNS_SCHEMA`] besides `id`, `history_id` and
 /// post-processing, named as they are. `None` is `NULL`.
+#[derive(Serialize)]
 pub struct RunColumns<'a> {
     pub kind: &'static str,
     pub timestamp: i64,
@@ -219,6 +241,37 @@ pub struct RunColumns<'a> {
     pub unfiltered_text: Option<&'a str>,
     /// A JSON object's text, as stored.
     pub transcription_settings: Option<&'a str>,
+}
+
+/// A run's post-processing columns of [`RUNS_SCHEMA`], named as they are.
+/// `None` is `NULL`.
+#[derive(Serialize)]
+pub struct PostProcessColumns<'a> {
+    pub post_processed_text: Option<&'a str>,
+    pub post_process_prompt: Option<&'a str>,
+    pub post_process_provider: Option<&'a str>,
+    pub response_model: Option<&'a str>,
+    /// The JSON text it is stored as.
+    pub request_options: Option<&'a str>,
+    pub stop_reason: Option<&'a str>,
+    pub post_process_error: Option<&'static str>,
+    pub post_process_ms: Option<u64>,
+    pub input_tokens: Option<u64>,
+    pub output_tokens: Option<u64>,
+    pub cache_read_tokens: Option<u64>,
+    pub cache_write_tokens: Option<u64>,
+    pub thinking_tokens: Option<u64>,
+}
+
+/// A row of [`RUNS_SCHEMA`] as it was written, named as its columns.
+#[derive(Serialize)]
+pub struct StoredRun<'a> {
+    pub id: i64,
+    pub history_id: i64,
+    #[serde(flatten)]
+    pub columns: RunColumns<'a>,
+    #[serde(flatten)]
+    pub post_process: PostProcessColumns<'a>,
 }
 
 pub struct HistoryManager {
@@ -519,17 +572,21 @@ impl HistoryManager {
         Ok(entry)
     }
 
-    /// Keep `run` as a run of the entry `history_id`.
-    pub fn add_run(&self, history_id: i64, run: &TranscriptionRun) -> Result<()> {
-        Self::insert_run(&self.get_connection()?, history_id, run)?;
-        debug!("Saved a run of history entry {}", history_id);
-        Ok(())
+    /// Keep `run` as a run of the entry `history_id`, and return the row as
+    /// it was written.
+    pub fn add_run<'a>(&self, history_id: i64, run: &'a TranscriptionRun) -> Result<StoredRun<'a>> {
+        let stored = Self::insert_run(&self.get_connection()?, history_id, run)?;
+        debug!("Saved run {} of history entry {}", stored.id, history_id);
+        Ok(stored)
     }
 
-    fn insert_run(conn: &Connection, history_id: i64, run: &TranscriptionRun) -> Result<()> {
+    fn insert_run<'a>(
+        conn: &Connection,
+        history_id: i64,
+        run: &'a TranscriptionRun,
+    ) -> Result<StoredRun<'a>> {
         let columns = run.columns();
-        let post_process = run.post_process.as_ref();
-        let reply = post_process.map(|post_process| &post_process.reply);
+        let post_process = run.post_process_columns();
         conn.execute(
             "INSERT INTO transcription_history_runs (
                 history_id, timestamp, kind, language, language_source, transcription_text,
@@ -553,8 +610,8 @@ impl HistoryManager {
                 ":language": columns.language,
                 ":language_source": columns.language_source,
                 ":transcription_text": columns.transcription_text,
-                ":post_processed_text": &run.post_processed_text,
-                ":post_process_prompt": post_process.and_then(|p| p.prompt.as_deref()),
+                ":post_processed_text": post_process.post_processed_text,
+                ":post_process_prompt": post_process.post_process_prompt,
                 ":app_version": columns.app_version,
                 ":model": columns.model,
                 ":decode_mode": columns.decode_mode,
@@ -562,20 +619,25 @@ impl HistoryManager {
                 ":transcription_ms": columns.transcription_ms,
                 ":unfiltered_text": columns.unfiltered_text,
                 ":transcription_settings": columns.transcription_settings,
-                ":post_process_provider": post_process.and_then(|p| p.provider.as_deref()),
-                ":response_model": reply.and_then(|r| r.model.as_deref()),
-                ":request_options": post_process.and_then(|p| p.request_options.as_deref()),
-                ":stop_reason": reply.and_then(|r| r.stop_reason.as_deref()),
-                ":post_process_error": post_process.and_then(|p| p.error),
-                ":post_process_ms": post_process.map(|p| p.duration_ms),
-                ":input_tokens": reply.and_then(|r| r.input_tokens),
-                ":output_tokens": reply.and_then(|r| r.output_tokens),
-                ":cache_read_tokens": reply.and_then(|r| r.cache_read_tokens),
-                ":cache_write_tokens": reply.and_then(|r| r.cache_write_tokens),
-                ":thinking_tokens": reply.and_then(|r| r.thinking_tokens),
+                ":post_process_provider": post_process.post_process_provider,
+                ":response_model": post_process.response_model,
+                ":request_options": post_process.request_options,
+                ":stop_reason": post_process.stop_reason,
+                ":post_process_error": post_process.post_process_error,
+                ":post_process_ms": post_process.post_process_ms,
+                ":input_tokens": post_process.input_tokens,
+                ":output_tokens": post_process.output_tokens,
+                ":cache_read_tokens": post_process.cache_read_tokens,
+                ":cache_write_tokens": post_process.cache_write_tokens,
+                ":thinking_tokens": post_process.thinking_tokens,
             },
         )?;
-        Ok(())
+        Ok(StoredRun {
+            id: conn.last_insert_rowid(),
+            history_id,
+            columns,
+            post_process,
+        })
     }
 
     /// Update an existing history entry with new transcription results (used by retry).
