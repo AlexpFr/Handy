@@ -35,7 +35,21 @@ pub struct CliArgs {
     #[arg(short = 'f', long, value_name = "WAV")]
     pub transcribe_file: Option<PathBuf>,
 
+    /// Transcribe again, with --model, the recording of each history entry
+    /// listed in this file, one entry id per line, as --transcribe-file
+    /// transcribes a file, and keep each result as a run of its entry
+    /// (kind `cli`, no post-processing): one JSON line per entry. Every other
+    /// setting is the profile's. Exits 3 if any entry failed.
+    #[arg(
+        long,
+        value_name = "ENTRIES",
+        requires = "model",
+        conflicts_with_all = ["transcribe_file", "device_index", "repeat", "list_devices", "list_models"]
+    )]
+    pub rerun_transcription: Option<PathBuf>,
+
     /// Model id to load for --transcribe-file (default: the selected model).
+    /// Required by --rerun-transcription.
     #[arg(long)]
     pub model: Option<String>,
 

@@ -778,6 +778,17 @@ impl TranscriptionManager {
         self.engine.loaded().map(|info| info.backend)
     }
 
+    /// How a dictation with the loaded model would decode while recording,
+    /// under the current settings; `None` when no transcribe-cpp model is
+    /// loaded, which a dictation transcribes in batch.
+    pub fn loaded_live_decode(&self) -> Option<policy::LiveDecode> {
+        let info = self.engine.loaded()?;
+        Some(live_decode(
+            ModelTraits::of(&info),
+            get_settings(&self.app_handle).long_form_chunking,
+        ))
+    }
+
     /// Whether a file job is queued or running, which holds the model.
     pub fn job_active(&self) -> bool {
         self.job_active.load(Ordering::Acquire)
@@ -977,8 +988,8 @@ impl TranscriptionManager {
 
     /// Transcribe a whole clip in batch: a re-transcribed history entry, or
     /// a file from the CLI.
-    pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
-        Ok(self.complete(Instant::now(), audio, None)?.text)
+    pub fn transcribe(&self, audio: Vec<f32>) -> Result<Transcription> {
+        self.complete(Instant::now(), audio, None)
     }
 
     /// Transcribe a finished recording: what its live decode produced, or a

@@ -47,7 +47,7 @@ pub use utils::{disable_gamescope_wsi_layer, gamescope_wsi_disabled_by_handy};
 
 use env_filter::Builder as EnvFilterBuilder;
 use managers::audio::AudioRecordingManager;
-use managers::history::HistoryManager;
+use managers::history::{HistoryManager, RunKind, RunTranscription, TranscriptionRun};
 use managers::model::ModelManager;
 use managers::transcription::TranscriptionManager;
 use managers::transcription_jobs::TranscriptionJobManager;
@@ -613,7 +613,7 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         }
         let t = Instant::now();
         match tm.transcribe(samples.clone()) {
-            Ok(out) => text = out,
+            Ok(out) => text = out.text,
             Err(e) => {
                 eprintln!("error: transcribe failed: {}", e);
                 return 1;
@@ -657,6 +657,177 @@ fn run_headless_transcription(app: &AppHandle, args: &CliArgs) -> i32 {
         println!("text: {}", text);
     }
     0
+}
+
+/// A list command's list: its text, or the exit code for one that can't be
+/// read.
+fn read_list(list: &std::path::Path) -> Result<String, i32> {
+    std::fs::read_to_string(list).map_err(|e| {
+        eprintln!("error: cannot read {}: {}", list.display(), e);
+        2
+    })
+}
+
+/// A list's items, one per line; blank lines are skipped.
+fn list_items(contents: &str) -> impl Iterator<Item = &str> {
+    contents
+        .trim_start_matches('\u{feff}')
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+}
+
+/// One JSON line on stdout, flushed so that it is seen as soon as it is
+/// done.
+fn print_line(line: &serde_json::Value) {
+    use std::io::Write;
+    println!("{}", line);
+    let _ = std::io::stdout().flush();
+}
+
+/// `--rerun-transcription`: transcribe each listed history entry's
+/// recording again with `--model`, as `--transcribe-file` transcribes a
+/// file, and keep the result as a run of the entry. One JSON line per entry
+/// as soon as it is done; exit code 3 if any entry failed.
+fn run_headless_rerun_transcription(
+    app: &AppHandle,
+    args: &CliArgs,
+    list: &std::path::Path,
+) -> i32 {
+    use crate::managers::transcription::policy::LiveDecode;
+    use std::time::Instant;
+
+    let contents = match read_list(list) {
+        Ok(contents) => contents,
+        Err(code) => return code,
+    };
+    let hm = match HistoryManager::new(app) {
+        Ok(hm) => hm,
+        Err(e) => {
+            eprintln!("error: cannot open the history: {}", e);
+            return 1;
+        }
+    };
+
+    let Some(model_id) = args.model.as_deref() else {
+        eprintln!("error: --rerun-transcription needs --model");
+        return 2;
+    };
+    // Loaded as run_headless_transcription loads it, on the device of the
+    // settings.
+    let tm = app.state::<Arc<TranscriptionManager>>();
+    let load_start = Instant::now();
+    if let Err(e) = tm.load_model_with_device(model_id, None) {
+        eprintln!("error: load_model('{}') failed: {}", model_id, e);
+        return 1;
+    }
+    let load_ms = load_start.elapsed().as_millis() as u64;
+    // A dictation with a streaming model decodes it live, which a batch run
+    // of its recording doesn't reproduce.
+    if tm.loaded_live_decode() == Some(LiveDecode::Stream) {
+        eprintln!(
+            "error: model '{}' streams: a dictation decodes it while recording, \
+             which transcribing its recording again would not reproduce",
+            model_id
+        );
+        return 2;
+    }
+    print_line(&serde_json::json!({
+        "model": model_id,
+        "bound_backend": tm.current_backend(),
+        "load_ms": load_ms,
+        "history_db": hm.db_path().display().to_string(),
+    }));
+
+    let mut failed = false;
+    for item in list_items(&contents) {
+        let line = match item.parse::<i64>() {
+            Ok(entry_id) => match rerun_entry_transcription(&hm, &tm, model_id, entry_id) {
+                Ok(line) => line,
+                Err(e) => {
+                    failed = true;
+                    serde_json::json!({ "entry": entry_id, "error": e })
+                }
+            },
+            Err(_) => {
+                failed = true;
+                serde_json::json!({ "entry": item, "error": "not an entry id" })
+            }
+        };
+        print_line(&line);
+    }
+    if failed {
+        3
+    } else {
+        0
+    }
+}
+
+/// One entry of `--rerun-transcription`: its line, once its run is kept.
+fn rerun_entry_transcription(
+    hm: &HistoryManager,
+    tm: &TranscriptionManager,
+    model_id: &str,
+    entry_id: i64,
+) -> Result<serde_json::Value, String> {
+    let entry = tauri::async_runtime::block_on(hm.get_entry_by_id(entry_id))
+        .map_err(|e| format!("cannot read the entry: {}", e))?
+        .ok_or_else(|| "no such entry".to_string())?;
+    let wav = hm.get_audio_file_path(&entry.file_name);
+    let run = transcribe_wav(tm, model_id, &wav)?;
+    let stored = hm
+        .add_run(entry.id, &run)
+        .map_err(|e| format!("cannot write the run: {}", e))?;
+    Ok(serde_json::json!({ "entry": entry_id, "run": stored }))
+}
+
+/// Transcribe `wav` with the model `model_id` as `--transcribe-file`
+/// transcribes a file, into a run of kind `cli`.
+fn transcribe_wav(
+    tm: &TranscriptionManager,
+    model_id: &str,
+    wav: &std::path::Path,
+) -> Result<TranscriptionRun, String> {
+    use std::time::Instant;
+
+    // Copied from run_headless_transcription.
+    let spec = hound::WavReader::open(wav)
+        .map_err(|e| format!("cannot open {}: {}", wav.display(), e))?
+        .spec();
+    if spec.sample_rate != 16_000
+        || spec.channels != 1
+        || spec.bits_per_sample != 16
+        || spec.sample_format != hound::SampleFormat::Int
+    {
+        return Err(format!(
+            "expected 16 kHz mono 16-bit PCM WAV, got {} Hz / {} ch / {}-bit {:?}",
+            spec.sample_rate, spec.channels, spec.bits_per_sample, spec.sample_format
+        ));
+    }
+    let samples = crate::audio_toolkit::read_wav_samples(wav)
+        .map_err(|e| format!("failed to read {}: {}", wav.display(), e))?;
+    if !tm.is_model_loaded() {
+        tm.load_model_with_device(model_id, None)
+            .map_err(|e| format!("reload failed: {}", e))?;
+    }
+
+    let audio_ms = TranscriptionRun::audio_ms(samples.len());
+    let t = Instant::now();
+    let out = tm
+        .transcribe(samples)
+        .map_err(|e| format!("transcribe failed: {}", e))?;
+    Ok(TranscriptionRun {
+        kind: RunKind::Cli,
+        transcription_text: out.text,
+        transcription: Some(RunTranscription {
+            language: out.language,
+            decoding: out.decoding,
+            audio_ms,
+            transcription_ms: t.elapsed().as_millis() as u64,
+        }),
+        post_processed_text: None,
+        post_process: None,
+    })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -844,8 +1015,10 @@ pub fn run(cli_args: CliArgs) {
 
     // The headless path must run as its own instance (see the single-instance
     // note below), not forward to an already-running app.
-    let headless_mode =
-        cli_args.transcribe_file.is_some() || cli_args.list_devices || cli_args.list_models;
+    let headless_mode = cli_args.transcribe_file.is_some()
+        || cli_args.rerun_transcription.is_some()
+        || cli_args.list_devices
+        || cli_args.list_models;
 
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
@@ -980,6 +1153,7 @@ pub fn run(cli_args: CliArgs) {
             // thread and exit. Deliberately skips the window, tray, overlay, audio
             // recorder (so it never opens the mic, even with always_on_microphone),
             // signal handlers, and autostart that initialize_core_logic sets up.
+            // --rerun-transcription opens the history itself.
             if headless_mode {
                 let app_handle = app.handle().clone();
                 let model_manager = Arc::new(
@@ -996,7 +1170,13 @@ pub fn run(cli_args: CliArgs) {
                 let handle = app_handle.clone();
                 let args = cli_args.clone();
                 std::thread::spawn(move || {
-                    let code = run_headless_guarded(|| run_headless_transcription(&handle, &args));
+                    let code = run_headless_guarded(|| {
+                        if let Some(list) = &args.rerun_transcription {
+                            run_headless_rerun_transcription(&handle, &args, list)
+                        } else {
+                            run_headless_transcription(&handle, &args)
+                        }
+                    });
                     // Drop the loaded engine before exit so its transcription
                     // worker is told to shut down cleanly.
                     if let Some(tm) = handle.try_state::<Arc<TranscriptionManager>>() {

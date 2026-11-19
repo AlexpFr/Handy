@@ -136,6 +136,8 @@ pub enum RunKind {
     Dictation,
     Retry,
     File,
+    /// A run that `--rerun-transcription` keeps.
+    Cli,
 }
 
 impl RunKind {
@@ -144,6 +146,7 @@ impl RunKind {
             RunKind::Dictation => "dictation",
             RunKind::Retry => "retry",
             RunKind::File => "file",
+            RunKind::Cli => "cli",
         }
     }
 }
@@ -469,6 +472,11 @@ impl HistoryManager {
 
     pub fn recordings_dir(&self) -> &std::path::Path {
         &self.recordings_dir
+    }
+
+    /// The database this manager reads and writes: the profile's.
+    pub fn db_path(&self) -> &std::path::Path {
+        &self.db_path
     }
 
     /// Save a new history entry to the database.
