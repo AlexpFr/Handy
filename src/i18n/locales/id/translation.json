@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Ketik nama model",
           "refreshModels": "Segarkan model"
         },
+        "thinking": {
+          "title": "Penalaran",
+          "description": "Menentukan apakah model bernalar sebelum menjawab, dan seberapa besar upayanya. “Bawaan Model” tidak meminta apa pun. Penalaran menambah jeda dan biaya, dan merapikan transkripsi jarang membutuhkannya. Tidak semua model menerima semua nilai: jika model menolaknya, permintaan gagal.",
+          "options": {
+            "default": "Bawaan Model",
+            "off": "Nonaktif",
+            "low": "Rendah",
+            "medium": "Sedang",
+            "high": "Tinggi",
+            "xhigh": "Sangat Tinggi",
+            "max": "Maksimum"
+          }
+        },
         "promptCache": {
           "title": "Cache Prompt",
           "description": "Meminta penyedia menyimpan instruksi prompt di cache-nya selama waktu ini. Hanya prompt tanpa ${output} yang di-cache. Cache lebih mahal daripada mengirim instruksi satu kali, dan makin mahal makin lama disimpan: hanya menguntungkan jika transkripsi dilakukan berdekatan.",

@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Model adı yazın",
           "refreshModels": "Modelleri Yenile"
         },
+        "thinking": {
+          "title": "Düşünme",
+          "description": "Modelin yanıt vermeden önce düşünüp düşünmeyeceğini ve ne kadar çaba harcayacağını belirler. “Model Varsayılanı” hiçbir şey istemez. Düşünme gecikme ve maliyet ekler; bir transkripsiyonu temizlemek için nadiren gerekir. Her model her değeri kabul etmez: model bir değeri reddederse istek başarısız olur.",
+          "options": {
+            "default": "Model Varsayılanı",
+            "off": "Kapalı",
+            "low": "Düşük",
+            "medium": "Orta",
+            "high": "Yüksek",
+            "xhigh": "Çok Yüksek",
+            "max": "Maksimum"
+          }
+        },
         "promptCache": {
           "title": "Prompt Önbelleği",
           "description": "Sağlayıcıdan prompt talimatlarını bu süre boyunca önbelleğinde tutmasını ister. Yalnızca ${output} içermeyen bir prompt önbelleğe alınır. Önbelleğe alma, talimatları bir kez göndermekten daha pahalıdır ve ne kadar uzun sürerse o kadar pahalı olur: yalnızca transkripsiyonlar art arda geldiğinde karşılığını verir.",

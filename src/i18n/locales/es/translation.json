@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Escribe un nombre de modelo",
           "refreshModels": "Actualizar modelos"
         },
+        "thinking": {
+          "title": "Razonamiento",
+          "description": "Indica si el modelo razona antes de responder y cuánto esfuerzo dedica. «Predeterminado del modelo» no pide nada. Razonar añade demora y coste, y limpiar una transcripción rara vez lo necesita. No todos los modelos aceptan todos los valores: si el modelo rechaza uno, la solicitud falla.",
+          "options": {
+            "default": "Predeterminado del modelo",
+            "off": "Desactivado",
+            "low": "Bajo",
+            "medium": "Medio",
+            "high": "Alto",
+            "xhigh": "Muy alto",
+            "max": "Máximo"
+          }
+        },
         "promptCache": {
           "title": "Caché del prompt",
           "description": "Pide al proveedor que conserve en caché las instrucciones del prompt durante este tiempo. Solo se guarda en caché un prompt sin ${output}. La caché cuesta más que enviar las instrucciones una vez, y más cuanto más dura: solo compensa cuando las transcripciones se suceden de cerca.",

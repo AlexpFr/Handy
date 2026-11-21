@@ -5,6 +5,7 @@ import {
   commands,
   type PostProcessApiFormat,
   type PostProcessPromptCache,
+  type PostProcessThinking,
 } from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
@@ -194,6 +195,52 @@ const AnthropicRequestSettings: React.FC = () => {
 
   return (
     <>
+      <SettingContainer
+        title={t("settings.postProcessing.api.thinking.title")}
+        description={t("settings.postProcessing.api.thinking.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={true}
+      >
+        <Dropdown
+          options={[
+            {
+              value: "default",
+              label: t("settings.postProcessing.api.thinking.options.default"),
+            },
+            {
+              value: "off",
+              label: t("settings.postProcessing.api.thinking.options.off"),
+            },
+            {
+              value: "low",
+              label: t("settings.postProcessing.api.thinking.options.low"),
+            },
+            {
+              value: "medium",
+              label: t("settings.postProcessing.api.thinking.options.medium"),
+            },
+            {
+              value: "high",
+              label: t("settings.postProcessing.api.thinking.options.high"),
+            },
+            {
+              value: "xhigh",
+              label: t("settings.postProcessing.api.thinking.options.xhigh"),
+            },
+            {
+              value: "max",
+              label: t("settings.postProcessing.api.thinking.options.max"),
+            },
+          ]}
+          selectedValue={getSetting("post_process_thinking") ?? "default"}
+          onSelect={(value) =>
+            updateSetting("post_process_thinking", value as PostProcessThinking)
+          }
+          disabled={isUpdating("post_process_thinking")}
+        />
+      </SettingContainer>
+
       <SettingContainer
         title={t("settings.postProcessing.api.promptCache.title")}
         description={t("settings.postProcessing.api.promptCache.description")}

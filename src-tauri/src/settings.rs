@@ -537,7 +537,6 @@ pub struct AppSettings {
     /// Only Anthropic-format requests carry it. `default` sends nothing,
     /// which leaves several recent models thinking. A value the model
     /// refuses fails the request.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_thinking: PostProcessThinking,
     #[serde(default)]

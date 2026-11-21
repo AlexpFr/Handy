@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Escriviu el nom d'un model",
           "refreshModels": "Actualitzeu els models"
         },
+        "thinking": {
+          "title": "Raonament",
+          "description": "Indica si el model raona abans de respondre i quant d'esforç hi dedica. «Per defecte del model» no demana res. Raonar afegeix demora i cost, i netejar una transcripció poques vegades ho necessita. No tots els models accepten tots els valors: si el model en rebutja un, la sol·licitud falla.",
+          "options": {
+            "default": "Per defecte del model",
+            "off": "Desactivat",
+            "low": "Baix",
+            "medium": "Mitjà",
+            "high": "Alt",
+            "xhigh": "Molt alt",
+            "max": "Màxim"
+          }
+        },
         "promptCache": {
           "title": "Memòria cau de la indicació",
           "description": "Demana al proveïdor que conservi a la memòria cau les instruccions de la indicació durant aquest temps. Només s'hi desa una indicació sense ${output}. La memòria cau costa més que enviar les instruccions una vegada, i més com més dura: només compensa quan les transcripcions se succeeixen de prop.",

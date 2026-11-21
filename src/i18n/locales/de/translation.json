@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Modellnamen eingeben",
           "refreshModels": "Modelle aktualisieren"
         },
+        "thinking": {
+          "title": "Denken",
+          "description": "Legt fest, ob das Modell vor der Antwort nachdenkt und wie viel Aufwand es betreibt. „Modellstandard“ fordert nichts an. Denken kostet Zeit und Geld, und das Bereinigen einer Transkription braucht es selten. Nicht jedes Modell akzeptiert jeden Wert: Lehnt das Modell einen ab, schlägt die Anfrage fehl.",
+          "options": {
+            "default": "Modellstandard",
+            "off": "Aus",
+            "low": "Niedrig",
+            "medium": "Mittel",
+            "high": "Hoch",
+            "xhigh": "Sehr hoch",
+            "max": "Maximal"
+          }
+        },
         "promptCache": {
           "title": "Prompt-Caching",
           "description": "Bittet den Anbieter, die Anweisungen des Prompts so lange im Cache zu halten. Nur ein Prompt ohne ${output} wird gecacht. Caching kostet mehr, als die Anweisungen einmal zu senden, und umso mehr, je länger es dauert: Es lohnt sich nur, wenn Transkriptionen dicht aufeinander folgen.",

@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Skriv et modelnavn",
           "refreshModels": "Opdater modeller"
         },
+        "thinking": {
+          "title": "Tænkning",
+          "description": "Bestemmer, om modellen tænker, før den svarer, og hvor stor en indsats den lægger i det. ”Modellens standard” beder ikke om noget. Tænkning giver ventetid og omkostninger, og oprydning i en transskription kræver det sjældent. Ikke alle modeller accepterer alle værdier: Afviser modellen en værdi, mislykkes anmodningen.",
+          "options": {
+            "default": "Modellens standard",
+            "off": "Fra",
+            "low": "Lav",
+            "medium": "Mellem",
+            "high": "Høj",
+            "xhigh": "Meget høj",
+            "max": "Maksimal"
+          }
+        },
         "promptCache": {
           "title": "Prompt-caching",
           "description": "Beder udbyderen om at beholde promptens instruktioner i sin cache så længe. Kun en prompt uden ${output} caches. Caching koster mere end at sende instruktionerne én gang, og mere jo længere den varer: Det betaler sig kun, når transskriptioner følger tæt efter hinanden.",

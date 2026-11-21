@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Ange ett modellnamn",
           "refreshModels": "Uppdatera modeller"
         },
+        "thinking": {
+          "title": "Tänkande",
+          "description": "Avgör om modellen tänker innan den svarar och hur stor ansträngning den lägger ner. ”Modellens standard” begär ingenting. Tänkande ger väntetid och kostnad, och att städa upp en transkription behöver det sällan. Alla modeller accepterar inte alla värden: om modellen avvisar ett värde misslyckas förfrågan.",
+          "options": {
+            "default": "Modellens standard",
+            "off": "Av",
+            "low": "Låg",
+            "medium": "Medel",
+            "high": "Hög",
+            "xhigh": "Mycket hög",
+            "max": "Maximal"
+          }
+        },
         "promptCache": {
           "title": "Prompt-cachning",
           "description": "Ber leverantören att behålla promptens instruktioner i sin cache så länge. Bara en prompt utan ${output} cachas. Cachning kostar mer än att skicka instruktionerna en gång, och mer ju längre den varar: det lönar sig bara när transkriptioner följer tätt på varandra.",

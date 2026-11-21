@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Tapez un nom de modèle",
           "refreshModels": "Actualiser les modèles"
         },
+        "thinking": {
+          "title": "Réflexion",
+          "description": "Indique si le modèle réfléchit avant de répondre, et avec quel effort. « Par défaut du modèle » ne demande rien. La réflexion ajoute du délai et du coût, et nettoyer une transcription en a rarement besoin. Tous les modèles n'acceptent pas toutes les valeurs : une valeur refusée par le modèle fait échouer la requête.",
+          "options": {
+            "default": "Par défaut du modèle",
+            "off": "Désactivée",
+            "low": "Faible",
+            "medium": "Moyenne",
+            "high": "Élevée",
+            "xhigh": "Très élevée",
+            "max": "Maximale"
+          }
+        },
         "promptCache": {
           "title": "Cache du prompt",
           "description": "Demande au fournisseur de garder les instructions du prompt en cache pendant cette durée. Seul un prompt sans ${output} est mis en cache. La mise en cache coûte plus cher que d'envoyer les instructions une fois, et d'autant plus qu'elle dure : elle n'est rentable que si les transcriptions se suivent de près.",

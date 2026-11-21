@@ -344,6 +344,14 @@ async changePostProcessPromptCacheSetting(cache: PostProcessPromptCache) : Promi
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessThinkingSetting(thinking: PostProcessThinking) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_thinking_setting", { thinking }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
@@ -1145,7 +1153,6 @@ post_process_prompt_cache?: PostProcessPromptCache;
  * Only Anthropic-format requests carry it. `default` sends nothing,
  * which leaves several recent models thinking. A value the model
  * refuses fails the request.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_thinking?: PostProcessThinking; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**

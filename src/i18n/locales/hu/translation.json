@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Írd be a modell nevét",
           "refreshModels": "Modellek frissítése"
         },
+        "thinking": {
+          "title": "Gondolkodás",
+          "description": "Azt szabja meg, hogy a modell gondolkodik-e a válasz előtt, és mekkora erőfeszítéssel. „A modell alapértelmezése” nem kér semmit. A gondolkodás késleltetéssel és költséggel jár, az átirat megtisztításához pedig ritkán van rá szükség. Nem minden modell fogad el minden értéket: ha a modell elutasít egyet, a kérés meghiúsul.",
+          "options": {
+            "default": "A modell alapértelmezése",
+            "off": "Ki",
+            "low": "Alacsony",
+            "medium": "Közepes",
+            "high": "Magas",
+            "xhigh": "Nagyon magas",
+            "max": "Maximális"
+          }
+        },
         "promptCache": {
           "title": "Prompt gyorsítótárazása",
           "description": "Arra kéri a szolgáltatót, hogy ennyi ideig tartsa a gyorsítótárában a prompt utasításait. Csak a ${output} nélküli prompt kerül a gyorsítótárba. A gyorsítótárazás többe kerül, mint az utasítások egyszeri elküldése, és minél tovább tart, annál többe, ezért csak akkor éri meg, ha az átiratok sűrűn követik egymást.",

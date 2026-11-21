@@ -667,6 +667,19 @@
           "placeholderNoOptions": "Digite o nome de um modelo",
           "refreshModels": "Atualizar modelos"
         },
+        "thinking": {
+          "title": "Raciocínio",
+          "description": "Define se o modelo raciocina antes de responder e quanto esforço dedica. “Padrão do modelo” não pede nada. O raciocínio adiciona demora e custo, e limpar uma transcrição raramente precisa dele. Nem todo modelo aceita todos os valores: se o modelo recusar um, a requisição falha.",
+          "options": {
+            "default": "Padrão do modelo",
+            "off": "Desativado",
+            "low": "Baixo",
+            "medium": "Médio",
+            "high": "Alto",
+            "xhigh": "Muito alto",
+            "max": "Máximo"
+          }
+        },
         "promptCache": {
           "title": "Cache do prompt",
           "description": "Pede ao provedor que mantenha as instruções do prompt em cache por esse tempo. Só um prompt sem ${output} é armazenado em cache. O cache custa mais do que enviar as instruções uma vez, e mais quanto mais dura: só compensa quando as transcrições se seguem de perto.",

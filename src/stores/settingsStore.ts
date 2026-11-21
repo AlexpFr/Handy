@@ -6,6 +6,7 @@ import type {
   AudioDevice,
   PostProcessApiFormat,
   PostProcessPromptCache,
+  PostProcessThinking,
   ChineseScript,
   TranscribeAcceleratorSetting,
   ShortcutActivation,
@@ -171,6 +172,8 @@ const settingUpdaters: {
     commands.changePostProcessPromptCacheSetting(
       value as PostProcessPromptCache,
     ),
+  post_process_thinking: (value) =>
+    commands.changePostProcessThinkingSetting(value as PostProcessThinking),
   mute_while_recording: (value) =>
     commands.changeMuteWhileRecordingSetting(value as boolean),
   append_trailing_space: (value) =>
