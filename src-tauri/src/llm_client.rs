@@ -976,6 +976,28 @@ mod tests {
     }
 
     #[test]
+    fn anthropic_system_prompt_is_a_block_asking_for_the_cache_only_when_set() {
+        let system = |cache| anthropic_system("Fix the punctuation.".to_string(), cache);
+        let block = |cache_control: Value| {
+            serde_json::json!([{
+                "type": "text",
+                "text": "Fix the punctuation.",
+                "cache_control": cache_control,
+            }])
+        };
+
+        assert_eq!(system(PostProcessPromptCache::Off), "Fix the punctuation.");
+        assert_eq!(
+            system(PostProcessPromptCache::FiveMinutes),
+            block(serde_json::json!({ "type": "ephemeral" }))
+        );
+        assert_eq!(
+            system(PostProcessPromptCache::OneHour),
+            block(serde_json::json!({ "type": "ephemeral", "ttl": "1h" }))
+        );
+    }
+
+    #[test]
     fn anthropic_response_keeps_only_text_blocks() {
         let response: AnthropicMessagesResponse = serde_json::from_str(
             r#"{"content":[{"type":"thinking","thinking":"hmm"},{"type":"text","text":"Hello"},{"type":"text","text":" world"}]}"#,

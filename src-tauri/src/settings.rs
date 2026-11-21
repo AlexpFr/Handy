@@ -1814,6 +1814,19 @@ mod tests {
     }
 
     #[test]
+    fn prompt_cache_is_written_as_its_duration() {
+        for (written, cache) in [
+            ("off", PostProcessPromptCache::Off),
+            ("5m", PostProcessPromptCache::FiveMinutes),
+            ("1h", PostProcessPromptCache::OneHour),
+        ] {
+            let read: PostProcessPromptCache =
+                serde_json::from_value(serde_json::json!(written)).unwrap();
+            assert_eq!(read, cache);
+        }
+    }
+
+    #[test]
     fn salvage_of_non_object_store_falls_back_to_defaults() {
         for stored in [
             serde_json::json!("corrupt"),
