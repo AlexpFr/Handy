@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minuten",
             "oneHour": "1 uur"
           }
+        },
+        "maxTokens": {
+          "title": "Maximaal aantal uitvoertokens",
+          "description": "Het maximale aantal tokens dat het model voor één transcriptie mag uitvoeren, inclusief nadenken. Een antwoord dat de limiet bereikt wordt afgekapt, en Handy gooit het weg in plaats van een onvolledige transcriptie te plakken. Elk model heeft zijn eigen maximum: een hogere waarde laat het verzoek mislukken."
         }
       },
       "prompts": {

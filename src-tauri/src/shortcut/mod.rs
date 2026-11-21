@@ -1406,6 +1406,18 @@ pub fn change_post_process_thinking_setting(
 
 #[tauri::command]
 #[specta::specta]
+pub fn change_post_process_max_tokens_setting(
+    app: AppHandle,
+    max_tokens: u32,
+) -> Result<(), String> {
+    let mut settings = settings::get_settings(&app);
+    settings.post_process_max_tokens = max_tokens;
+    settings::write_settings(&app, settings);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn change_mute_while_recording_setting(app: AppHandle, enabled: bool) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
     settings.mute_while_recording = enabled;

@@ -688,6 +688,10 @@
             "fiveMinutes": "5 Minuten",
             "oneHour": "1 Stunde"
           }
+        },
+        "maxTokens": {
+          "title": "Maximale Ausgabe-Tokens",
+          "description": "Die Höchstzahl an Tokens, die das Modell für eine Transkription ausgeben darf, Denken eingeschlossen. Eine Antwort, die das Limit erreicht, wird abgeschnitten, und Handy verwirft sie, statt eine unvollständige Transkription einzufügen. Jedes Modell hat sein eigenes Maximum: Ein höherer Wert lässt die Anfrage fehlschlagen."
         }
       },
       "prompts": {

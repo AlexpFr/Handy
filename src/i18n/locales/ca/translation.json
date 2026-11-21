@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minuts",
             "oneHour": "1 hora"
           }
+        },
+        "maxTokens": {
+          "title": "Màxim de tokens de sortida",
+          "description": "El màxim de tokens que el model pot generar per a una transcripció, raonament inclòs. Una resposta que arriba al límit queda tallada, i Handy la descarta en lloc d'enganxar una transcripció incompleta. Cada model té el seu propi màxim: un valor superior fa fallar la sol·licitud."
         }
       },
       "prompts": {

@@ -352,6 +352,14 @@ async changePostProcessThinkingSetting(thinking: PostProcessThinking) : Promise<
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessMaxTokensSetting(maxTokens: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_max_tokens_setting", { maxTokens }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
@@ -1158,7 +1166,6 @@ post_process_thinking?: PostProcessThinking;
 /**
  * Only Anthropic-format requests carry it: the format requires one. The
  * model's thinking counts toward it.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_max_tokens?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**

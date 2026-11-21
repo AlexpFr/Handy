@@ -688,6 +688,10 @@
             "fiveMinutes": "5 分钟",
             "oneHour": "1 小时"
           }
+        },
+        "maxTokens": {
+          "title": "最大输出 Token 数",
+          "description": "模型为一次转录最多可输出的 Token 数，包含思考部分。达到上限的回复会被截断，Handy 会将其丢弃，而不是粘贴不完整的转录。每个模型都有自己的上限：超过上限的取值会导致请求失败。"
         }
       },
       "prompts": {

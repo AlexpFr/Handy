@@ -174,6 +174,8 @@ const settingUpdaters: {
     ),
   post_process_thinking: (value) =>
     commands.changePostProcessThinkingSetting(value as PostProcessThinking),
+  post_process_max_tokens: (value) =>
+    commands.changePostProcessMaxTokensSetting(value as number),
   mute_while_recording: (value) =>
     commands.changeMuteWhileRecordingSetting(value as boolean),
   append_trailing_space: (value) =>

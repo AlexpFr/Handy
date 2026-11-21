@@ -23,6 +23,7 @@ import { ProviderSelect } from "../PostProcessingSettingsApi/ProviderSelect";
 import { BaseUrlField } from "../PostProcessingSettingsApi/BaseUrlField";
 import { ApiKeyField } from "../PostProcessingSettingsApi/ApiKeyField";
 import { ModelSelect } from "../PostProcessingSettingsApi/ModelSelect";
+import { MaxTokensField } from "../PostProcessingSettingsApi/MaxTokensField";
 import { usePostProcessProviderState } from "../PostProcessingSettingsApi/usePostProcessProviderState";
 import { ShortcutInput } from "../ShortcutInput";
 import { useSettings } from "../../../hooks/useSettings";
@@ -275,6 +276,20 @@ const AnthropicRequestSettings: React.FC = () => {
             )
           }
           disabled={isUpdating("post_process_prompt_cache")}
+        />
+      </SettingContainer>
+
+      <SettingContainer
+        title={t("settings.postProcessing.api.maxTokens.title")}
+        description={t("settings.postProcessing.api.maxTokens.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={true}
+      >
+        <MaxTokensField
+          value={getSetting("post_process_max_tokens")}
+          onCommit={(value) => updateSetting("post_process_max_tokens", value)}
+          disabled={isUpdating("post_process_max_tokens")}
         />
       </SettingContainer>
     </>

@@ -688,6 +688,10 @@
             "fiveMinutes": "5 perc",
             "oneHour": "1 óra"
           }
+        },
+        "maxTokens": {
+          "title": "Kimeneti tokenek maximális száma",
+          "description": "Legfeljebb ennyi tokent adhat ki a modell egy átirathoz, a gondolkodást is beleértve. A korlátot elérő válasz megszakad, és a Handy inkább eldobja, mint hogy egy átirat töredékét illessze be. Minden modellnek saját maximuma van: az ennél nagyobb érték miatt a kérés meghiúsul."
         }
       },
       "prompts": {

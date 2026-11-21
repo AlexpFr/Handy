@@ -688,6 +688,10 @@
             "fiveMinutes": "5 Minutes",
             "oneHour": "1 Hour"
           }
+        },
+        "maxTokens": {
+          "title": "Max Output Tokens",
+          "description": "The most tokens the model may put out for one transcription, thinking included. A reply that reaches the limit is cut off, and Handy discards it rather than paste part of a transcription. Each model has its own maximum: a value above it fails the request."
         }
       },
       "prompts": {

@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minutos",
             "oneHour": "1 hora"
           }
+        },
+        "maxTokens": {
+          "title": "Máximo de tokens de saída",
+          "description": "O máximo de tokens que o modelo pode gerar para uma transcrição, raciocínio incluído. Uma resposta que atinge o limite é cortada, e o Handy a descarta em vez de colar uma transcrição incompleta. Cada modelo tem seu próprio máximo: um valor acima dele faz a requisição falhar."
         }
       },
       "prompts": {

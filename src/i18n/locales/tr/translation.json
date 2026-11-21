@@ -688,6 +688,10 @@
             "fiveMinutes": "5 Dakika",
             "oneHour": "1 Saat"
           }
+        },
+        "maxTokens": {
+          "title": "Maksimum Çıktı Tokenı",
+          "description": "Modelin tek bir transkripsiyon için üretebileceği en fazla token sayısı, düşünme dahil. Sınıra ulaşan yanıt yarıda kesilir ve Handy eksik bir transkripsiyon yapıştırmak yerine onu atar. Her modelin kendi üst sınırı vardır: bunun üzerindeki bir değer isteğin başarısız olmasına yol açar."
         }
       },
       "prompts": {

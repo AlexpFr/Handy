@@ -541,7 +541,6 @@ pub struct AppSettings {
     pub post_process_thinking: PostProcessThinking,
     /// Only Anthropic-format requests carry it: the format requires one. The
     /// model's thinking counts toward it.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default = "default_post_process_max_tokens")]
     pub post_process_max_tokens: u32,
     #[serde(default)]

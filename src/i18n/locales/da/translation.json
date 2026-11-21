@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minutter",
             "oneHour": "1 time"
           }
+        },
+        "maxTokens": {
+          "title": "Maks. outputtokens",
+          "description": "Det højeste antal tokens, modellen må producere til én transskription, inklusive tænkning. Et svar, der når grænsen, bliver afskåret, og Handy kasserer det i stedet for at indsætte en ufuldstændig transskription. Hver model har sit eget maksimum: En højere værdi får anmodningen til at mislykkes."
         }
       },
       "prompts": {

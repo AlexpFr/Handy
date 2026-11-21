@@ -688,6 +688,10 @@
             "fiveMinutes": "5 Menit",
             "oneHour": "1 Jam"
           }
+        },
+        "maxTokens": {
+          "title": "Token Keluaran Maksimum",
+          "description": "Jumlah token terbanyak yang boleh dihasilkan model untuk satu transkripsi, termasuk penalaran. Jawaban yang mencapai batas akan terpotong, dan Handy membuangnya alih-alih menempelkan transkripsi yang tidak lengkap. Setiap model punya batas maksimumnya sendiri: nilai di atasnya membuat permintaan gagal."
         }
       },
       "prompts": {

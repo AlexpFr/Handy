@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minuter",
             "oneHour": "1 timme"
           }
+        },
+        "maxTokens": {
+          "title": "Max antal utdatatokens",
+          "description": "Det högsta antal tokens som modellen får producera för en transkription, tänkande inräknat. Ett svar som når gränsen kapas, och Handy kastar det i stället för att klistra in en ofullständig transkription. Varje modell har sitt eget maximum: ett högre värde gör att förfrågan misslyckas."
         }
       },
       "prompts": {

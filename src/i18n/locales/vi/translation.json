@@ -688,6 +688,10 @@
             "fiveMinutes": "5 phút",
             "oneHour": "1 giờ"
           }
+        },
+        "maxTokens": {
+          "title": "Số token đầu ra tối đa",
+          "description": "Số token nhiều nhất mà mô hình có thể xuất ra cho một lần chép lời, tính cả phần suy luận. Câu trả lời chạm giới hạn sẽ bị cắt, và Handy loại bỏ nó thay vì dán một bản chép lời không đầy đủ. Mỗi mô hình có mức tối đa riêng: giá trị cao hơn sẽ làm yêu cầu thất bại."
         }
       },
       "prompts": {

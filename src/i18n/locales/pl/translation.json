@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minut",
             "oneHour": "1 godzina"
           }
+        },
+        "maxTokens": {
+          "title": "Maks. liczba tokenów wyjściowych",
+          "description": "Największa liczba tokenów, jaką model może wygenerować dla jednej transkrypcji, łącznie z myśleniem. Odpowiedź, która osiąga limit, zostaje ucięta, a Handy ją odrzuca, zamiast wklejać niepełną transkrypcję. Każdy model ma własne maksimum: wyższa wartość powoduje niepowodzenie żądania."
         }
       },
       "prompts": {

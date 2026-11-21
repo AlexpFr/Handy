@@ -688,6 +688,10 @@
             "fiveMinutes": "5 minut",
             "oneHour": "1 hodina"
           }
+        },
+        "maxTokens": {
+          "title": "Maximum výstupních tokenů",
+          "description": "Nejvyšší počet tokenů, které model smí vygenerovat pro jeden přepis, včetně přemýšlení. Odpověď, která dosáhne limitu, je oříznuta a Handy ji zahodí, místo aby vložil neúplný přepis. Každý model má své vlastní maximum: vyšší hodnota způsobí selhání požadavku."
         }
       },
       "prompts": {
