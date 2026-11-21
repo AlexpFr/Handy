@@ -163,6 +163,17 @@ fn build_system_prompt(prompt_template: &str) -> String {
     prompt_template.replace("${output}", "").trim().to_string()
 }
 
+/// The transcription as a message of its own, apart from the prompt. Sent
+/// bare, the model can take it as addressed to it and answer a question in it
+/// instead of cleaning it, so the user can name a tag to put around it.
+fn build_transcription_message(transcription: &str, tag: &str) -> String {
+    if tag.is_empty() {
+        transcription.to_string()
+    } else {
+        format!("<{tag}>{transcription}</{tag}>")
+    }
+}
+
 /// Returns `true` when a transcription has no meaningful content to
 /// post-process (empty or whitespace-only). Used to skip the post-processing
 /// LLM call when nothing was actually transcribed, which would otherwise make
@@ -297,7 +308,8 @@ async fn post_process_transcription(
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = build_system_prompt(&prompt);
-        let user_content = transcription.to_string();
+        let user_content =
+            build_transcription_message(transcription, &settings.post_process_transcription_tag);
 
         // Handle Apple Intelligence separately since it uses native Swift APIs
         if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
