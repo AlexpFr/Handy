@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Cari atau pilih model",
           "placeholderNoOptions": "Ketik nama model",
           "refreshModels": "Segarkan model"
+        },
+        "promptCache": {
+          "title": "Cache Prompt",
+          "description": "Meminta penyedia menyimpan instruksi prompt di cache-nya selama waktu ini. Hanya prompt tanpa ${output} yang di-cache. Cache lebih mahal daripada mengirim instruksi satu kali, dan makin mahal makin lama disimpan: hanya menguntungkan jika transkripsi dilakukan berdekatan.",
+          "options": {
+            "off": "Nonaktif",
+            "fiveMinutes": "5 Menit",
+            "oneHour": "1 Jam"
+          }
         }
       },
       "prompts": {

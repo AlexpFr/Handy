@@ -666,6 +666,15 @@
           "placeholderWithOptions": "搜索或选择模型",
           "placeholderNoOptions": "输入模型名称",
           "refreshModels": "刷新模型"
+        },
+        "promptCache": {
+          "title": "提示词缓存",
+          "description": "请求提供商将提示词的指令在其缓存中保留这么长时间。只有不含 ${output} 的提示词才会被缓存。缓存的费用高于发送一次指令，且保留越久越贵：只有在转录接连进行时才划算。",
+          "options": {
+            "off": "关闭",
+            "fiveMinutes": "5 分钟",
+            "oneHour": "1 小时"
+          }
         }
       },
       "prompts": {

@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Buscar o seleccionar un modelo",
           "placeholderNoOptions": "Escribe un nombre de modelo",
           "refreshModels": "Actualizar modelos"
+        },
+        "promptCache": {
+          "title": "Caché del prompt",
+          "description": "Pide al proveedor que conserve en caché las instrucciones del prompt durante este tiempo. Solo se guarda en caché un prompt sin ${output}. La caché cuesta más que enviar las instrucciones una vez, y más cuanto más dura: solo compensa cuando las transcripciones se suceden de cerca.",
+          "options": {
+            "off": "Desactivada",
+            "fiveMinutes": "5 minutos",
+            "oneHour": "1 hora"
+          }
         }
       },
       "prompts": {

@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Cerca o scegli un modello",
           "placeholderNoOptions": "Digita il nome di un modello",
           "refreshModels": "Aggiorna modelli"
+        },
+        "promptCache": {
+          "title": "Cache del prompt",
+          "description": "Chiede al provider di tenere in cache le istruzioni del prompt per questa durata. Solo un prompt senza ${output} viene messo in cache. La cache costa più che inviare le istruzioni una volta, e tanto più quanto più dura: conviene solo quando le trascrizioni si susseguono da vicino.",
+          "options": {
+            "off": "Disattivata",
+            "fiveMinutes": "5 minuti",
+            "oneHour": "1 ora"
+          }
         }
       },
       "prompts": {

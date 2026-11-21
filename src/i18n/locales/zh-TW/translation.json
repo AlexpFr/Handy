@@ -666,6 +666,15 @@
           "placeholderWithOptions": "搜尋或選擇模型",
           "placeholderNoOptions": "輸入模型名稱",
           "refreshModels": "重新整理模型"
+        },
+        "promptCache": {
+          "title": "提示詞快取",
+          "description": "請求供應商將提示詞的指令在其快取中保留這段時間。只有不含 ${output} 的提示詞才會被快取。快取的費用高於傳送一次指令，且保留越久越貴：只有在轉錄接連進行時才划算。",
+          "options": {
+            "off": "關閉",
+            "fiveMinutes": "5 分鐘",
+            "oneHour": "1 小時"
+          }
         }
       },
       "prompts": {

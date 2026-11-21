@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Modell keresése vagy kiválasztása",
           "placeholderNoOptions": "Írd be a modell nevét",
           "refreshModels": "Modellek frissítése"
+        },
+        "promptCache": {
+          "title": "Prompt gyorsítótárazása",
+          "description": "Arra kéri a szolgáltatót, hogy ennyi ideig tartsa a gyorsítótárában a prompt utasításait. Csak a ${output} nélküli prompt kerül a gyorsítótárba. A gyorsítótárazás többe kerül, mint az utasítások egyszeri elküldése, és minél tovább tart, annál többe, ezért csak akkor éri meg, ha az átiratok sűrűn követik egymást.",
+          "options": {
+            "off": "Ki",
+            "fiveMinutes": "5 perc",
+            "oneHour": "1 óra"
+          }
         }
       },
       "prompts": {

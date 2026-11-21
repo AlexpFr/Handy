@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Zoek of selecteer een model",
           "placeholderNoOptions": "Typ een modelnaam",
           "refreshModels": "Modellen verversen"
+        },
+        "promptCache": {
+          "title": "Prompt-caching",
+          "description": "Vraagt de provider de instructies van de prompt zo lang in de cache te bewaren. Alleen een prompt zonder ${output} wordt gecachet. Caching kost meer dan de instructies één keer versturen, en meer naarmate het langer duurt: het loont alleen als transcripties elkaar snel opvolgen.",
+          "options": {
+            "off": "Uit",
+            "fiveMinutes": "5 minuten",
+            "oneHour": "1 uur"
+          }
         }
       },
       "prompts": {

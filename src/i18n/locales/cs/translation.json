@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Vyhledejte nebo vyberte model",
           "placeholderNoOptions": "Zadejte název modelu",
           "refreshModels": "Obnovit modely"
+        },
+        "promptCache": {
+          "title": "Mezipaměť promptu",
+          "description": "Požádá poskytovatele, aby instrukce promptu uchoval po tuto dobu v mezipaměti. Do mezipaměti se ukládá jen prompt bez ${output}. Ukládání do mezipaměti stojí víc než jedno odeslání instrukcí, a tím víc, čím déle trvá: vyplatí se jen tehdy, když přepisy následují těsně po sobě.",
+          "options": {
+            "off": "Vypnuto",
+            "fiveMinutes": "5 minut",
+            "oneHour": "1 hodina"
+          }
         }
       },
       "prompts": {

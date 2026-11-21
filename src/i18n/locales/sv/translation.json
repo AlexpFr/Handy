@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Sök eller välj en modell",
           "placeholderNoOptions": "Ange ett modellnamn",
           "refreshModels": "Uppdatera modeller"
+        },
+        "promptCache": {
+          "title": "Prompt-cachning",
+          "description": "Ber leverantören att behålla promptens instruktioner i sin cache så länge. Bara en prompt utan ${output} cachas. Cachning kostar mer än att skicka instruktionerna en gång, och mer ju längre den varar: det lönar sig bara när transkriptioner följer tätt på varandra.",
+          "options": {
+            "off": "Av",
+            "fiveMinutes": "5 minuter",
+            "oneHour": "1 timme"
+          }
         }
       },
       "prompts": {

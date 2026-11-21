@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Cerqueu o seleccioneu un model",
           "placeholderNoOptions": "Escriviu el nom d'un model",
           "refreshModels": "Actualitzeu els models"
+        },
+        "promptCache": {
+          "title": "Memòria cau de la indicació",
+          "description": "Demana al proveïdor que conservi a la memòria cau les instruccions de la indicació durant aquest temps. Només s'hi desa una indicació sense ${output}. La memòria cau costa més que enviar les instruccions una vegada, i més com més dura: només compensa quan les transcripcions se succeeixen de prop.",
+          "options": {
+            "off": "Desactivada",
+            "fiveMinutes": "5 minuts",
+            "oneHour": "1 hora"
+          }
         }
       },
       "prompts": {

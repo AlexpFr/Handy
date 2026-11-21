@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { RefreshCcw } from "lucide-react";
-import { commands, type PostProcessApiFormat } from "@/bindings";
+import {
+  commands,
+  type PostProcessApiFormat,
+  type PostProcessPromptCache,
+} from "@/bindings";
 
 import { Alert } from "../../ui/Alert";
 import {
@@ -185,7 +189,49 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
 
 /** What only the Anthropic format's requests carry. */
 const AnthropicRequestSettings: React.FC = () => {
-  return <></>;
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+
+  return (
+    <>
+      <SettingContainer
+        title={t("settings.postProcessing.api.promptCache.title")}
+        description={t("settings.postProcessing.api.promptCache.description")}
+        descriptionMode="tooltip"
+        layout="horizontal"
+        grouped={true}
+      >
+        <Dropdown
+          options={[
+            {
+              value: "off",
+              label: t("settings.postProcessing.api.promptCache.options.off"),
+            },
+            {
+              value: "5m",
+              label: t(
+                "settings.postProcessing.api.promptCache.options.fiveMinutes",
+              ),
+            },
+            {
+              value: "1h",
+              label: t(
+                "settings.postProcessing.api.promptCache.options.oneHour",
+              ),
+            },
+          ]}
+          selectedValue={getSetting("post_process_prompt_cache") ?? "off"}
+          onSelect={(value) =>
+            updateSetting(
+              "post_process_prompt_cache",
+              value as PostProcessPromptCache,
+            )
+          }
+          disabled={isUpdating("post_process_prompt_cache")}
+        />
+      </SettingContainer>
+    </>
+  );
 };
 
 const PostProcessingSettingsPromptsComponent: React.FC = () => {

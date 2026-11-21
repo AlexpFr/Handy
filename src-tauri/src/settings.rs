@@ -515,7 +515,6 @@ pub struct AppSettings {
     /// Asks the provider to cache the prompt's instructions. Only a prompt
     /// without `${output}` is cached, since it goes out as the system
     /// prompt, and only Anthropic-format requests ask for it.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_prompt_cache: PostProcessPromptCache,
     #[serde(default)]

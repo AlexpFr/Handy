@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Modell suchen oder auswählen",
           "placeholderNoOptions": "Modellnamen eingeben",
           "refreshModels": "Modelle aktualisieren"
+        },
+        "promptCache": {
+          "title": "Prompt-Caching",
+          "description": "Bittet den Anbieter, die Anweisungen des Prompts so lange im Cache zu halten. Nur ein Prompt ohne ${output} wird gecacht. Caching kostet mehr, als die Anweisungen einmal zu senden, und umso mehr, je länger es dauert: Es lohnt sich nur, wenn Transkriptionen dicht aufeinander folgen.",
+          "options": {
+            "off": "Aus",
+            "fiveMinutes": "5 Minuten",
+            "oneHour": "1 Stunde"
+          }
         }
       },
       "prompts": {

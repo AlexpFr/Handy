@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Model ara veya seç",
           "placeholderNoOptions": "Model adı yazın",
           "refreshModels": "Modelleri Yenile"
+        },
+        "promptCache": {
+          "title": "Prompt Önbelleği",
+          "description": "Sağlayıcıdan prompt talimatlarını bu süre boyunca önbelleğinde tutmasını ister. Yalnızca ${output} içermeyen bir prompt önbelleğe alınır. Önbelleğe alma, talimatları bir kez göndermekten daha pahalıdır ve ne kadar uzun sürerse o kadar pahalı olur: yalnızca transkripsiyonlar art arda geldiğinde karşılığını verir.",
+          "options": {
+            "off": "Kapalı",
+            "fiveMinutes": "5 Dakika",
+            "oneHour": "1 Saat"
+          }
         }
       },
       "prompts": {

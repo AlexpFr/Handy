@@ -336,6 +336,14 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessPromptCacheSetting(cache: PostProcessPromptCache) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_prompt_cache_setting", { cache }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
@@ -1131,7 +1139,6 @@ spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: bo
  * Asks the provider to cache the prompt's instructions. Only a prompt
  * without `${output}` is cached, since it goes out as the system
  * prompt, and only Anthropic-format requests ask for it.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_prompt_cache?: PostProcessPromptCache; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**

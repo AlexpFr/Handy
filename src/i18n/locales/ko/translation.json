@@ -666,6 +666,15 @@
           "placeholderWithOptions": "모델 검색 또는 선택",
           "placeholderNoOptions": "모델 이름 입력",
           "refreshModels": "모델 새로고침"
+        },
+        "promptCache": {
+          "title": "프롬프트 캐싱",
+          "description": "제공자에게 프롬프트 지시사항을 이 시간 동안 캐시에 보관하도록 요청합니다. ${output}이 없는 프롬프트만 캐시됩니다. 캐싱은 지시사항을 한 번 보내는 것보다 비용이 더 들고 오래 유지할수록 더 비싸므로, 변환이 짧은 간격으로 이어질 때만 이득입니다.",
+          "options": {
+            "off": "끄기",
+            "fiveMinutes": "5분",
+            "oneHour": "1시간"
+          }
         }
       },
       "prompts": {

@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Wyszukaj lub wybierz model",
           "placeholderNoOptions": "Wpisz nazwę modelu",
           "refreshModels": "Odśwież modele"
+        },
+        "promptCache": {
+          "title": "Pamięć podręczna promptu",
+          "description": "Prosi dostawcę o przechowywanie instrukcji promptu w pamięci podręcznej przez ten czas. Buforowany jest tylko prompt bez ${output}. Buforowanie kosztuje więcej niż jednorazowe wysłanie instrukcji, i tym więcej, im dłużej trwa: opłaca się tylko wtedy, gdy transkrypcje następują krótko po sobie.",
+          "options": {
+            "off": "Wyłączona",
+            "fiveMinutes": "5 minut",
+            "oneHour": "1 godzina"
+          }
         }
       },
       "prompts": {

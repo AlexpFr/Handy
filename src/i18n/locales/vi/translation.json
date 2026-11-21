@@ -666,6 +666,15 @@
           "placeholderWithOptions": "Tìm kiếm hoặc chọn một mô hình",
           "placeholderNoOptions": "Nhập tên mô hình",
           "refreshModels": "Làm mới mô hình"
+        },
+        "promptCache": {
+          "title": "Bộ nhớ đệm prompt",
+          "description": "Yêu cầu nhà cung cấp giữ các hướng dẫn của prompt trong bộ nhớ đệm trong khoảng thời gian này. Chỉ prompt không có ${output} mới được lưu đệm. Lưu đệm tốn hơn gửi hướng dẫn một lần, và càng lâu càng tốn: chỉ có lợi khi các lần chép lời diễn ra liên tiếp.",
+          "options": {
+            "off": "Tắt",
+            "fiveMinutes": "5 phút",
+            "oneHour": "1 giờ"
+          }
         }
       },
       "prompts": {
