@@ -939,6 +939,7 @@ mod tests {
         let json = serde_json::to_value(&request).unwrap();
         assert_eq!(json["max_tokens"], ANTHROPIC_MAX_TOKENS);
         assert_eq!(json["messages"][0]["role"], "user");
+        assert!(json.get("system").is_none());
         assert!(json.get("stream").is_none());
         assert!(json.get("reasoning_effort").is_none());
     }

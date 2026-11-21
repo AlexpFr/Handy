@@ -1136,7 +1136,7 @@ mod tests {
     use super::{
         complete_unless_cancelled, is_blank_transcription, non_blank_post_processed_text,
         post_process_transcription, should_use_streaming_overlay, strip_invisible_chars,
-        strip_think_block, PostProcessOutcome,
+        strip_think_block, unstructured_messages, PostProcessOutcome,
     };
     use crate::settings::{get_default_settings, AppSettings, OverlayStyle};
     use std::future;
@@ -1219,6 +1219,25 @@ mod tests {
         assert_eq!(
             run_post_process(&post_process_settings(&url), "hello"),
             PostProcessOutcome::Failed
+        );
+    }
+
+    #[test]
+    fn prompt_without_output_sends_the_transcription_apart() {
+        assert_eq!(
+            unstructured_messages("Fix the punctuation.", "hello"),
+            (
+                "hello".to_string(),
+                Some("Fix the punctuation.".to_string())
+            )
+        );
+    }
+
+    #[test]
+    fn prompt_with_output_is_sent_as_one_message_holding_the_transcription() {
+        assert_eq!(
+            unstructured_messages("Fix the punctuation of: ${output}", "hello"),
+            ("Fix the punctuation of: hello".to_string(), None)
         );
     }
 
