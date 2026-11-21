@@ -1,4 +1,4 @@
-use crate::settings::{PostProcessApiFormat, PostProcessProvider};
+use crate::settings::{PostProcessApiFormat, PostProcessPromptCache, PostProcessProvider};
 use log::{debug, error, info};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
@@ -146,10 +146,30 @@ struct AnthropicMessagesRequest {
     model: String,
     max_tokens: u32,
     /// The Messages API takes the system prompt here: it rejects a `system`
-    /// role in `messages`.
+    /// role in `messages`. See `anthropic_system` for its two shapes.
     #[serde(skip_serializing_if = "Option::is_none")]
-    system: Option<String>,
+    system: Option<Value>,
     messages: Vec<ChatMessage>,
+}
+
+/// The `system` field of a Messages request. This format caches only when a
+/// request asks, block by block, so a system prompt to cache goes out as a
+/// list of one text block carrying `cache_control`. Otherwise it stays the
+/// plain string.
+fn anthropic_system(system_prompt: String, cache: PostProcessPromptCache) -> Value {
+    let cache_control = match cache {
+        PostProcessPromptCache::Off => return Value::String(system_prompt),
+        // Five minutes is how long this format caches without a `ttl`.
+        PostProcessPromptCache::FiveMinutes => serde_json::json!({ "type": "ephemeral" }),
+        PostProcessPromptCache::OneHour => {
+            serde_json::json!({ "type": "ephemeral", "ttl": "1h" })
+        }
+    };
+    serde_json::json!([{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": cache_control,
+    }])
 }
 
 #[derive(Debug, Deserialize)]
@@ -377,7 +397,8 @@ fn report_reqwest_error(context: &str, error: &reqwest::Error) -> String {
 
 /// Send a chat completion request in the provider's API format.
 /// `system_prompt`, when provided, is sent apart from `user_content`, the way
-/// each format takes a system prompt.
+/// each format takes a system prompt. `system_prompt_cache` asks the provider
+/// to cache it, in the format that has to be asked (Anthropic).
 /// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
 /// or Err on actual errors (HTTP, parsing, etc.)
 pub async fn send_chat_completion(
@@ -386,10 +407,19 @@ pub async fn send_chat_completion(
     model: &str,
     user_content: String,
     system_prompt: Option<String>,
+    system_prompt_cache: PostProcessPromptCache,
     disable_reasoning: bool,
 ) -> Result<Option<String>, String> {
     if provider.api_format == PostProcessApiFormat::Anthropic {
-        return send_anthropic_message(provider, api_key, model, user_content, system_prompt).await;
+        return send_anthropic_message(
+            provider,
+            api_key,
+            model,
+            user_content,
+            system_prompt,
+            system_prompt_cache,
+        )
+        .await;
     }
 
     send_chat_completion_with_schema(
@@ -568,6 +598,7 @@ async fn send_anthropic_message(
     model: &str,
     user_content: String,
     system_prompt: Option<String>,
+    system_prompt_cache: PostProcessPromptCache,
 ) -> Result<Option<String>, String> {
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
 
@@ -579,7 +610,7 @@ async fn send_anthropic_message(
     let request_body = AnthropicMessagesRequest {
         model: model.to_string(),
         max_tokens: ANTHROPIC_MAX_TOKENS,
-        system: system_prompt,
+        system: system_prompt.map(|system| anthropic_system(system, system_prompt_cache)),
         messages: vec![ChatMessage {
             role: "user".to_string(),
             content: user_content,
@@ -969,6 +1000,7 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
+            PostProcessPromptCache::Off,
             true,
         )
         .await;
@@ -988,6 +1020,7 @@ mod tests {
             "test-model",
             "raw text".to_string(),
             None,
+            PostProcessPromptCache::Off,
             false,
         )
         .await;
@@ -1007,6 +1040,7 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
+            PostProcessPromptCache::Off,
             true,
         )
         .await;
