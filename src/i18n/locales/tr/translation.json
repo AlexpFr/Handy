@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Model ara veya seç",
           "placeholderNoOptions": "Model adı yazın",
           "refreshModels": "Modelleri Yenile"
+        },
+        "thinking": {
+          "title": "Düşünme",
+          "description": "Modelin yanıt vermeden önce düşünüp düşünmeyeceğini ve ne kadar çaba harcayacağını belirler. “Model Varsayılanı” hiçbir şey istemez. Düşünme gecikme ve maliyet ekler; bir transkripsiyonu temizlemek için nadiren gerekir. Her model her değeri kabul etmez: model bir değeri reddederse istek başarısız olur.",
+          "options": {
+            "default": "Model Varsayılanı",
+            "off": "Kapalı",
+            "low": "Düşük",
+            "medium": "Orta",
+            "high": "Yüksek",
+            "xhigh": "Çok Yüksek",
+            "max": "Maksimum"
+          }
+        },
+        "promptCache": {
+          "title": "Prompt Önbelleği",
+          "description": "Sağlayıcıdan prompt talimatlarını bu süre boyunca önbelleğinde tutmasını ister. Yalnızca ${output} içermeyen bir prompt önbelleğe alınır. Önbelleğe alma, talimatları bir kez göndermekten daha pahalıdır ve ne kadar uzun sürerse o kadar pahalı olur: yalnızca transkripsiyonlar art arda geldiğinde karşılığını verir.",
+          "options": {
+            "off": "Kapalı",
+            "fiveMinutes": "5 Dakika",
+            "oneHour": "1 Saat"
+          }
+        },
+        "maxTokens": {
+          "title": "Maksimum Çıktı Tokenı",
+          "description": "Modelin tek bir transkripsiyon için üretebileceği en fazla token sayısı, düşünme dahil. Sınıra ulaşan yanıt yarıda kesilir ve Handy eksik bir transkripsiyon yapıştırmak yerine onu atar. Her modelin kendi üst sınırı vardır: bunun üzerindeki bir değer isteğin başarısız olmasına yol açar."
         }
       },
       "prompts": {

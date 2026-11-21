@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Search or select a model",
           "placeholderNoOptions": "Type a model name",
           "refreshModels": "Refresh models"
+        },
+        "thinking": {
+          "title": "Thinking",
+          "description": "Whether the model thinks before it answers, and how much effort it puts in. Model Default asks for nothing. Thinking adds delay and cost, and cleaning up a transcription rarely needs it. Not every model takes every value: one it refuses fails the request.",
+          "options": {
+            "default": "Model Default",
+            "off": "Off",
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "xhigh": "Extra High",
+            "max": "Max"
+          }
+        },
+        "promptCache": {
+          "title": "Prompt Caching",
+          "description": "Asks the provider to keep the prompt's instructions in its cache for this long. Only a prompt without ${output} is cached. Caching costs more than sending the instructions once, and more the longer it lasts, so it pays off only when transcriptions follow closely.",
+          "options": {
+            "off": "Off",
+            "fiveMinutes": "5 Minutes",
+            "oneHour": "1 Hour"
+          }
+        },
+        "maxTokens": {
+          "title": "Max Output Tokens",
+          "description": "The most tokens the model may put out for one transcription, thinking included. A reply that reaches the limit is cut off, and Handy discards it rather than paste part of a transcription. Each model has its own maximum: a value above it fails the request."
         }
       },
       "prompts": {

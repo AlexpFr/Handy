@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Cerca o scegli un modello",
           "placeholderNoOptions": "Digita il nome di un modello",
           "refreshModels": "Aggiorna modelli"
+        },
+        "thinking": {
+          "title": "Ragionamento",
+          "description": "Indica se il modello ragiona prima di rispondere e con quanto impegno. «Predefinito del modello» non chiede nulla. Il ragionamento aggiunge attesa e costi, e ripulire una trascrizione ne ha raramente bisogno. Non tutti i modelli accettano tutti i valori: se il modello ne rifiuta uno, la richiesta fallisce.",
+          "options": {
+            "default": "Predefinito del modello",
+            "off": "Disattivato",
+            "low": "Basso",
+            "medium": "Medio",
+            "high": "Alto",
+            "xhigh": "Molto alto",
+            "max": "Massimo"
+          }
+        },
+        "promptCache": {
+          "title": "Cache del prompt",
+          "description": "Chiede al provider di tenere in cache le istruzioni del prompt per questa durata. Solo un prompt senza ${output} viene messo in cache. La cache costa più che inviare le istruzioni una volta, e tanto più quanto più dura: conviene solo quando le trascrizioni si susseguono da vicino.",
+          "options": {
+            "off": "Disattivata",
+            "fiveMinutes": "5 minuti",
+            "oneHour": "1 ora"
+          }
+        },
+        "maxTokens": {
+          "title": "Token di output massimi",
+          "description": "Il numero massimo di token che il modello può produrre per una trascrizione, ragionamento incluso. Una risposta che raggiunge il limite viene troncata, e Handy la scarta invece di incollare una trascrizione incompleta. Ogni modello ha il proprio massimo: un valore superiore fa fallire la richiesta."
         }
       },
       "prompts": {

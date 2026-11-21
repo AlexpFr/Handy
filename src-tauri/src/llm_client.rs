@@ -1,4 +1,7 @@
-use crate::settings::{PostProcessApiFormat, PostProcessProvider};
+use crate::settings::{
+    PostProcessApiFormat, PostProcessPromptCache, PostProcessProvider, PostProcessThinking,
+    DEFAULT_POST_PROCESS_MAX_TOKENS,
+};
 use log::{debug, error, info};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
@@ -190,15 +193,94 @@ struct ChatMessageResponse {
     content: Option<String>,
 }
 
-/// Output budget for Anthropic Messages requests, where `max_tokens` is
-/// required. Ample for a cleaned-up dictation.
-const ANTHROPIC_MAX_TOKENS: u32 = 4096;
-
 #[derive(Debug, Serialize)]
 struct AnthropicMessagesRequest {
     model: String,
+    /// Required by the Messages API. A model's thinking counts toward it.
     max_tokens: u32,
+    /// The Messages API takes the system prompt here: it rejects a `system`
+    /// role in `messages`. See `anthropic_system` for its two shapes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system: Option<Value>,
     messages: Vec<ChatMessage>,
+    #[serde(flatten)]
+    thinking: AnthropicThinkingParams,
+}
+
+/// The user's settings that only Anthropic-format requests carry.
+#[derive(Debug, Clone, Copy)]
+pub struct AnthropicOptions {
+    /// How long to cache the system prompt.
+    pub system_prompt_cache: PostProcessPromptCache,
+    /// Whether the model thinks, and how hard.
+    pub thinking: PostProcessThinking,
+    /// The most tokens the model may put out.
+    pub max_tokens: u32,
+}
+
+impl Default for AnthropicOptions {
+    fn default() -> Self {
+        Self {
+            system_prompt_cache: PostProcessPromptCache::default(),
+            thinking: PostProcessThinking::default(),
+            max_tokens: DEFAULT_POST_PROCESS_MAX_TOKENS,
+        }
+    }
+}
+
+/// Request fields that set a model's thinking in the Anthropic format: one to
+/// switch it off, another for the effort it puts in. At most one is set per
+/// request (see `anthropic_thinking_params`).
+#[derive(Debug, Serialize, Default, PartialEq)]
+struct AnthropicThinkingParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thinking: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output_config: Option<Value>,
+}
+
+/// `Default` sends neither field. Unlike `reasoning_disable_params`, a value
+/// the model refuses, as some refuse `Off`, is not retried without it: the
+/// user chose it, so the request fails.
+fn anthropic_thinking_params(thinking: PostProcessThinking) -> AnthropicThinkingParams {
+    let effort = match thinking {
+        PostProcessThinking::Default => return AnthropicThinkingParams::default(),
+        PostProcessThinking::Off => {
+            return AnthropicThinkingParams {
+                thinking: Some(serde_json::json!({ "type": "disabled" })),
+                output_config: None,
+            }
+        }
+        PostProcessThinking::Low => "low",
+        PostProcessThinking::Medium => "medium",
+        PostProcessThinking::High => "high",
+        PostProcessThinking::XHigh => "xhigh",
+        PostProcessThinking::Max => "max",
+    };
+    AnthropicThinkingParams {
+        thinking: None,
+        output_config: Some(serde_json::json!({ "effort": effort })),
+    }
+}
+
+/// The `system` field of a Messages request. This format caches only when a
+/// request asks, block by block, so a system prompt to cache goes out as a
+/// list of one text block carrying `cache_control`. Otherwise it stays the
+/// plain string.
+fn anthropic_system(system_prompt: String, cache: PostProcessPromptCache) -> Value {
+    let cache_control = match cache {
+        PostProcessPromptCache::Off => return Value::String(system_prompt),
+        // Five minutes is how long this format caches without a `ttl`.
+        PostProcessPromptCache::FiveMinutes => serde_json::json!({ "type": "ephemeral" }),
+        PostProcessPromptCache::OneHour => {
+            serde_json::json!({ "type": "ephemeral", "ttl": "1h" })
+        }
+    };
+    serde_json::json!([{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": cache_control,
+    }])
 }
 
 #[derive(Debug, Deserialize)]
@@ -450,25 +532,38 @@ fn report_reqwest_error(context: &str, error: &reqwest::Error) -> String {
     details
 }
 
-/// Send a chat completion request to an OpenAI-compatible API
+/// Send a chat completion request in the provider's API format.
+/// `system_prompt`, when provided, is sent apart from `user_content`, the way
+/// each format takes a system prompt. `anthropic` is what the user set for
+/// the Anthropic format, and changes no other format's request.
 /// The reply's text is `None` when the response has no content.
 pub async fn send_chat_completion(
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
-    prompt: String,
+    user_content: String,
+    system_prompt: Option<String>,
+    anthropic: AnthropicOptions,
     disable_reasoning: bool,
 ) -> Result<ChatReply, ChatError> {
     if provider.api_format == PostProcessApiFormat::Anthropic {
-        return send_anthropic_message(provider, api_key, model, prompt).await;
+        return send_anthropic_message(
+            provider,
+            api_key,
+            model,
+            user_content,
+            system_prompt,
+            anthropic,
+        )
+        .await;
     }
 
     send_chat_completion_with_schema(
         provider,
         api_key,
         model,
-        prompt,
-        None,
+        user_content,
+        system_prompt,
         None,
         disable_reasoning,
     )
@@ -635,17 +730,24 @@ pub async fn send_chat_completion_with_schema(
     })
 }
 
-/// Send a single-prompt request to an Anthropic Messages API (`/messages`).
+/// Send a request to an Anthropic Messages API (`/messages`).
 /// Used by every provider with the Anthropic format (the built-in Anthropic
 /// provider and a custom provider set to it). None of them use structured
-/// output, and thinking is off unless requested, so no reasoning fields are
-/// needed.
+/// output. Whether a model thinks by default depends on the model, so its
+/// thinking is set only when the user asks (see `anthropic_thinking_params`).
 async fn send_anthropic_message(
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
-    prompt: String,
+    user_content: String,
+    system_prompt: Option<String>,
+    options: AnthropicOptions,
 ) -> Result<ChatReply, ChatError> {
+    let AnthropicOptions {
+        system_prompt_cache,
+        thinking,
+        max_tokens,
+    } = options;
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
 
     debug!(
@@ -655,11 +757,13 @@ async fn send_anthropic_message(
 
     let request_body = AnthropicMessagesRequest {
         model: model.to_string(),
-        max_tokens: ANTHROPIC_MAX_TOKENS,
+        max_tokens,
+        system: system_prompt.map(|system| anthropic_system(system, system_prompt_cache)),
         messages: vec![ChatMessage {
             role: "user".to_string(),
-            content: prompt,
+            content: user_content,
         }],
+        thinking: anthropic_thinking_params(thinking),
     };
 
     let response = create_client(provider, &api_key)?
@@ -690,12 +794,13 @@ async fn send_anthropic_message(
         .map_err(|e| report_reqwest_error("Failed to parse API response", &e))?;
 
     // A response cut off at the token budget is incomplete; pasting it would
-    // silently drop the end of the dictation.
+    // silently drop the end of the dictation. The error names the setting,
+    // which is the user's only way to give the model more room.
     if message.stop_reason.as_deref() == Some("max_tokens") {
         return Err(ChatError::Truncated {
             message: format!(
-                "Response was truncated at the {} token limit",
-                ANTHROPIC_MAX_TOKENS
+                "Response was truncated at the {} token limit (post_process_max_tokens)",
+                max_tokens
             ),
             meta: Box::new(message.into_reply().meta),
         });
@@ -1005,17 +1110,69 @@ mod tests {
     fn anthropic_request_carries_required_max_tokens() {
         let request = AnthropicMessagesRequest {
             model: "claude-haiku".to_string(),
-            max_tokens: ANTHROPIC_MAX_TOKENS,
+            max_tokens: DEFAULT_POST_PROCESS_MAX_TOKENS,
+            system: None,
             messages: vec![ChatMessage {
                 role: "user".to_string(),
                 content: "hi".to_string(),
             }],
+            thinking: AnthropicThinkingParams::default(),
         };
         let json = serde_json::to_value(&request).unwrap();
-        assert_eq!(json["max_tokens"], ANTHROPIC_MAX_TOKENS);
+        assert_eq!(json["max_tokens"], DEFAULT_POST_PROCESS_MAX_TOKENS);
         assert_eq!(json["messages"][0]["role"], "user");
+        assert!(json.get("system").is_none());
         assert!(json.get("stream").is_none());
         assert!(json.get("reasoning_effort").is_none());
+    }
+
+    #[test]
+    fn anthropic_system_prompt_is_a_block_asking_for_the_cache_only_when_set() {
+        let system = |cache| anthropic_system("Fix the punctuation.".to_string(), cache);
+        let block = |cache_control: Value| {
+            serde_json::json!([{
+                "type": "text",
+                "text": "Fix the punctuation.",
+                "cache_control": cache_control,
+            }])
+        };
+
+        assert_eq!(system(PostProcessPromptCache::Off), "Fix the punctuation.");
+        assert_eq!(
+            system(PostProcessPromptCache::FiveMinutes),
+            block(serde_json::json!({ "type": "ephemeral" }))
+        );
+        assert_eq!(
+            system(PostProcessPromptCache::OneHour),
+            block(serde_json::json!({ "type": "ephemeral", "ttl": "1h" }))
+        );
+    }
+
+    #[test]
+    fn anthropic_request_asks_for_the_thinking_the_user_set() {
+        let added_fields =
+            |thinking| serde_json::to_value(anthropic_thinking_params(thinking)).unwrap();
+
+        assert_eq!(
+            added_fields(PostProcessThinking::Default),
+            serde_json::json!({})
+        );
+        assert_eq!(
+            added_fields(PostProcessThinking::Off),
+            serde_json::json!({ "thinking": { "type": "disabled" } })
+        );
+        for (thinking, effort) in [
+            (PostProcessThinking::Low, "low"),
+            (PostProcessThinking::Medium, "medium"),
+            (PostProcessThinking::High, "high"),
+            (PostProcessThinking::XHigh, "xhigh"),
+            (PostProcessThinking::Max, "max"),
+        ] {
+            assert_eq!(
+                added_fields(thinking),
+                serde_json::json!({ "output_config": { "effort": effort } })
+            );
+        }
     }
 
     #[test]
@@ -1068,6 +1225,8 @@ mod tests {
             "key".to_string(),
             "claude-haiku",
             "raw text".to_string(),
+            None,
+            AnthropicOptions::default(),
             true,
         )
         .await;
@@ -1086,6 +1245,8 @@ mod tests {
             "key".to_string(),
             "test-model",
             "raw text".to_string(),
+            None,
+            AnthropicOptions::default(),
             false,
         )
         .await;
@@ -1104,6 +1265,8 @@ mod tests {
             "key".to_string(),
             "claude-haiku",
             "raw text".to_string(),
+            None,
+            AnthropicOptions::default(),
             true,
         )
         .await;
@@ -1113,5 +1276,28 @@ mod tests {
         // A truncated reply was billed: what it said about itself is kept.
         assert_eq!(meta.stop_reason.as_deref(), Some("max_tokens"));
         assert!(message.contains("truncated"));
+    }
+
+    #[tokio::test]
+    async fn anthropic_format_truncation_names_the_limit_the_request_carried() {
+        let base_url = serve_one_response(
+            "200 OK",
+            r#"{"type":"message","stop_reason":"max_tokens","content":[{"type":"text","text":"Cut off"}]}"#,
+        )
+        .await;
+        let result = send_chat_completion(
+            &anthropic_format_provider(&base_url),
+            "key".to_string(),
+            "claude-haiku",
+            "raw text".to_string(),
+            None,
+            AnthropicOptions {
+                max_tokens: 20000,
+                ..Default::default()
+            },
+            true,
+        )
+        .await;
+        assert!(result.unwrap_err().contains("20000 token limit"));
     }
 }

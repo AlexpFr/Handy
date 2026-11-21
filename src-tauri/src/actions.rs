@@ -160,10 +160,29 @@ fn strip_think_block(s: &str) -> &str {
     s
 }
 
+/// Where a prompt places the transcription itself.
+const OUTPUT_PLACEHOLDER: &str = "${output}";
+
 /// Build a system prompt from the user's prompt template.
 /// Removes `${output}` placeholder since the transcription is sent as the user message.
 fn build_system_prompt(prompt_template: &str) -> String {
-    prompt_template.replace("${output}", "").trim().to_string()
+    prompt_template
+        .replace(OUTPUT_PLACEHOLDER, "")
+        .trim()
+        .to_string()
+}
+
+/// The user message and the system prompt of a request without structured
+/// output. A prompt with `${output}` goes out as a single message, with the
+/// transcription in its place. A prompt without it holds only instructions,
+/// so it goes out as the system prompt, and the transcription as the user
+/// message.
+fn unstructured_messages(prompt: &str, transcription: &str) -> (String, Option<String>) {
+    if prompt.contains(OUTPUT_PLACEHOLDER) {
+        (prompt.replace(OUTPUT_PLACEHOLDER, transcription), None)
+    } else {
+        (transcription.to_string(), Some(build_system_prompt(prompt)))
+    }
 }
 
 /// Returns `true` when a transcription has no meaningful content to
@@ -339,6 +358,8 @@ async fn post_process_transcription(
     // Ask these providers to skip reasoning/thinking — post-processing rarely
     // benefits from it and it adds seconds of latency. llm_client picks the
     // field the endpoint understands and retries without it if rejected.
+    // The Anthropic format ignores this: there the user sets what the model
+    // is asked, with `post_process_thinking`.
     let disable_reasoning = matches!(provider.id.as_str(), "custom" | "openrouter");
 
     if provider.supports_structured_output {
@@ -462,16 +483,23 @@ async fn post_process_transcription(
         }
     }
 
-    // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let processed_prompt = prompt.replace("${output}", transcription);
-    debug!("Processed prompt length: {} chars", processed_prompt.len());
+    // Legacy mode: no structured output, so the prompt says where the
+    // transcription goes (see `unstructured_messages`).
+    let (user_content, system_prompt) = unstructured_messages(&prompt, transcription);
+    debug!("Processed prompt length: {} chars", user_content.len());
     run.request_options = Some(sent_request_options(settings, &provider, false));
 
     let reply = crate::llm_client::send_chat_completion(
         &provider,
         api_key,
         &model,
-        processed_prompt,
+        user_content,
+        system_prompt,
+        crate::llm_client::AnthropicOptions {
+            system_prompt_cache: settings.post_process_prompt_cache,
+            thinking: settings.post_process_thinking,
+            max_tokens: settings.post_process_max_tokens,
+        },
         disable_reasoning,
     )
     .await;
@@ -1214,7 +1242,7 @@ mod tests {
     use super::{
         complete_unless_cancelled, is_blank_transcription, non_blank_post_processed_text,
         post_process_transcription, should_use_streaming_overlay, strip_invisible_chars,
-        strip_think_block, PostProcessOutcome, PostProcessRun,
+        strip_think_block, unstructured_messages, PostProcessOutcome, PostProcessRun,
     };
     use crate::settings::{get_default_settings, AppSettings, OverlayStyle};
     use std::future;
@@ -1326,6 +1354,25 @@ mod tests {
         assert_eq!(
             run_post_process(&post_process_settings(&url), "hello"),
             PostProcessOutcome::Failed
+        );
+    }
+
+    #[test]
+    fn prompt_without_output_sends_the_transcription_apart() {
+        assert_eq!(
+            unstructured_messages("Fix the punctuation.", "hello"),
+            (
+                "hello".to_string(),
+                Some("Fix the punctuation.".to_string())
+            )
+        );
+    }
+
+    #[test]
+    fn prompt_with_output_is_sent_as_one_message_holding_the_transcription() {
+        assert_eq!(
+            unstructured_messages("Fix the punctuation of: ${output}", "hello"),
+            ("Fix the punctuation of: hello".to_string(), None)
         );
     }
 

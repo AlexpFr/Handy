@@ -106,6 +106,38 @@ pub enum PostProcessApiFormat {
     Anthropic,
 }
 
+/// How long a provider is asked to keep a post-processing prompt's
+/// instructions in its cache. The values are the durations the Anthropic
+/// format offers.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, Type)]
+pub enum PostProcessPromptCache {
+    /// Ask for nothing.
+    #[default]
+    #[serde(rename = "off")]
+    Off,
+    #[serde(rename = "5m")]
+    FiveMinutes,
+    #[serde(rename = "1h")]
+    OneHour,
+}
+
+/// What a provider is asked about its model's thinking. The values are the
+/// ones the Anthropic format takes.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum PostProcessThinking {
+    /// Ask for nothing: the model keeps its own default.
+    #[default]
+    Default,
+    /// Ask the model not to think.
+    Off,
+    Low,
+    Medium,
+    High,
+    XHigh,
+    Max,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct PostProcessProvider {
     pub id: String,
@@ -497,6 +529,20 @@ pub struct AppSettings {
     pub post_process_prompts: Vec<LLMPrompt>,
     #[serde(default)]
     pub post_process_selected_prompt_id: Option<String>,
+    /// Asks the provider to cache the prompt's instructions. Only a prompt
+    /// without `${output}` is cached, since it goes out as the system
+    /// prompt, and only Anthropic-format requests ask for it.
+    #[serde(default)]
+    pub post_process_prompt_cache: PostProcessPromptCache,
+    /// Only Anthropic-format requests carry it. `default` sends nothing,
+    /// which leaves several recent models thinking. A value the model
+    /// refuses fails the request.
+    #[serde(default)]
+    pub post_process_thinking: PostProcessThinking,
+    /// Only Anthropic-format requests carry it: the format requires one. The
+    /// model's thinking counts toward it.
+    #[serde(default = "default_post_process_max_tokens")]
+    pub post_process_max_tokens: u32,
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
@@ -712,6 +758,14 @@ fn default_theme() -> Theme {
 
 fn default_post_process_enabled() -> bool {
     false
+}
+
+/// Output budget of a post-processing request until the user sets one. Ample
+/// for a cleaned-up dictation from a model that doesn't think.
+pub const DEFAULT_POST_PROCESS_MAX_TOKENS: u32 = 4096;
+
+fn default_post_process_max_tokens() -> u32 {
+    DEFAULT_POST_PROCESS_MAX_TOKENS
 }
 
 fn default_app_language() -> String {
@@ -1050,6 +1104,9 @@ pub fn get_default_settings() -> AppSettings {
         post_process_models: default_post_process_models(),
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: None,
+        post_process_prompt_cache: PostProcessPromptCache::Off,
+        post_process_thinking: PostProcessThinking::Default,
+        post_process_max_tokens: default_post_process_max_tokens(),
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
@@ -1789,6 +1846,42 @@ mod tests {
         let salvaged = salvage_settings(&stored);
         assert_eq!(salvaged.selected_model, "kept");
         assert_eq!(salvaged.sound_theme, default_sound_theme());
+    }
+
+    #[test]
+    fn prompt_cache_is_written_as_its_duration() {
+        for (written, cache) in [
+            ("off", PostProcessPromptCache::Off),
+            ("5m", PostProcessPromptCache::FiveMinutes),
+            ("1h", PostProcessPromptCache::OneHour),
+        ] {
+            let read: PostProcessPromptCache =
+                serde_json::from_value(serde_json::json!(written)).unwrap();
+            assert_eq!(read, cache);
+        }
+    }
+
+    #[test]
+    fn thinking_is_written_as_its_api_value() {
+        for (written, thinking) in [
+            ("default", PostProcessThinking::Default),
+            ("off", PostProcessThinking::Off),
+            ("low", PostProcessThinking::Low),
+            ("medium", PostProcessThinking::Medium),
+            ("high", PostProcessThinking::High),
+            ("xhigh", PostProcessThinking::XHigh),
+            ("max", PostProcessThinking::Max),
+        ] {
+            let read: PostProcessThinking =
+                serde_json::from_value(serde_json::json!(written)).unwrap();
+            assert_eq!(read, thinking);
+        }
+    }
+
+    #[test]
+    fn max_tokens_is_4096_until_set() {
+        let settings: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(settings.post_process_max_tokens, 4096);
     }
 
     #[test]

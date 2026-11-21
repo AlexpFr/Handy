@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Tìm kiếm hoặc chọn một mô hình",
           "placeholderNoOptions": "Nhập tên mô hình",
           "refreshModels": "Làm mới mô hình"
+        },
+        "thinking": {
+          "title": "Suy luận",
+          "description": "Quyết định mô hình có suy luận trước khi trả lời hay không, và bỏ ra bao nhiêu công sức. “Mặc định của mô hình” không yêu cầu gì. Suy luận làm tăng độ trễ và chi phí, và việc chỉnh sửa bản chép lời hiếm khi cần đến. Không phải mô hình nào cũng chấp nhận mọi giá trị: nếu mô hình từ chối, yêu cầu sẽ thất bại.",
+          "options": {
+            "default": "Mặc định của mô hình",
+            "off": "Tắt",
+            "low": "Thấp",
+            "medium": "Trung bình",
+            "high": "Cao",
+            "xhigh": "Rất cao",
+            "max": "Tối đa"
+          }
+        },
+        "promptCache": {
+          "title": "Bộ nhớ đệm prompt",
+          "description": "Yêu cầu nhà cung cấp giữ các hướng dẫn của prompt trong bộ nhớ đệm trong khoảng thời gian này. Chỉ prompt không có ${output} mới được lưu đệm. Lưu đệm tốn hơn gửi hướng dẫn một lần, và càng lâu càng tốn: chỉ có lợi khi các lần chép lời diễn ra liên tiếp.",
+          "options": {
+            "off": "Tắt",
+            "fiveMinutes": "5 phút",
+            "oneHour": "1 giờ"
+          }
+        },
+        "maxTokens": {
+          "title": "Số token đầu ra tối đa",
+          "description": "Số token nhiều nhất mà mô hình có thể xuất ra cho một lần chép lời, tính cả phần suy luận. Câu trả lời chạm giới hạn sẽ bị cắt, và Handy loại bỏ nó thay vì dán một bản chép lời không đầy đủ. Mỗi mô hình có mức tối đa riêng: giá trị cao hơn sẽ làm yêu cầu thất bại."
         }
       },
       "prompts": {

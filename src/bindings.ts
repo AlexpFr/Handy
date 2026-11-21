@@ -336,6 +336,30 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessPromptCacheSetting(cache: PostProcessPromptCache) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_prompt_cache_setting", { cache }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePostProcessThinkingSetting(thinking: PostProcessThinking) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_thinking_setting", { thinking }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changePostProcessMaxTokensSetting(maxTokens: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_max_tokens_setting", { maxTokens }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
@@ -1126,7 +1150,24 @@ selected_channel?: number | null; clamshell_microphone?: string | null; selected
  * Every language the person dictates in (codes, e.g. ["en", "zh"]),
  * picked during onboarding. Empty until then.
  */
-spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
+spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; 
+/**
+ * Asks the provider to cache the prompt's instructions. Only a prompt
+ * without `${output}` is cached, since it goes out as the system
+ * prompt, and only Anthropic-format requests ask for it.
+ */
+post_process_prompt_cache?: PostProcessPromptCache; 
+/**
+ * Only Anthropic-format requests carry it. `default` sends nothing,
+ * which leaves several recent models thinking. A value the model
+ * refuses fails the request.
+ */
+post_process_thinking?: PostProcessThinking; 
+/**
+ * Only Anthropic-format requests carry it: the format requires one. The
+ * model's thinking counts toward it.
+ */
+post_process_max_tokens?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**
  * Experimental, macOS only: move a Bluetooth headset (AirPods) to this
  * Mac while recording, so its microphone does not return silence while
@@ -1386,7 +1427,30 @@ export type PostProcessApiFormat =
  * Anthropic Messages (`/messages`)
  */
 "anthropic"
+/**
+ * How long a provider is asked to keep a post-processing prompt's
+ * instructions in its cache. The values are the durations the Anthropic
+ * format offers.
+ */
+export type PostProcessPromptCache = 
+/**
+ * Ask for nothing.
+ */
+"off" | "5m" | "1h"
 export type PostProcessProvider = { id: string; label: string; base_url: string; allow_base_url_edit?: boolean; models_endpoint?: string | null; supports_structured_output?: boolean; api_format?: PostProcessApiFormat }
+/**
+ * What a provider is asked about its model's thinking. The values are the
+ * ones the Anthropic format takes.
+ */
+export type PostProcessThinking = 
+/**
+ * Ask for nothing: the model keeps its own default.
+ */
+"default" | 
+/**
+ * Ask the model not to think.
+ */
+"off" | "low" | "medium" | "high" | "xhigh" | "max"
 /**
  * Recording phase events for windows that follow along (onboarding's Try it).
  */

@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Zoek of selecteer een model",
           "placeholderNoOptions": "Typ een modelnaam",
           "refreshModels": "Modellen verversen"
+        },
+        "thinking": {
+          "title": "Denken",
+          "description": "Bepaalt of het model nadenkt voordat het antwoordt, en hoeveel moeite het doet. ‘Standaard van model’ vraagt niets. Nadenken kost tijd en geld, en het opschonen van een transcriptie heeft het zelden nodig. Niet elk model accepteert elke waarde: weigert het model er een, dan mislukt het verzoek.",
+          "options": {
+            "default": "Standaard van model",
+            "off": "Uit",
+            "low": "Laag",
+            "medium": "Gemiddeld",
+            "high": "Hoog",
+            "xhigh": "Zeer hoog",
+            "max": "Maximaal"
+          }
+        },
+        "promptCache": {
+          "title": "Prompt-caching",
+          "description": "Vraagt de provider de instructies van de prompt zo lang in de cache te bewaren. Alleen een prompt zonder ${output} wordt gecachet. Caching kost meer dan de instructies één keer versturen, en meer naarmate het langer duurt: het loont alleen als transcripties elkaar snel opvolgen.",
+          "options": {
+            "off": "Uit",
+            "fiveMinutes": "5 minuten",
+            "oneHour": "1 uur"
+          }
+        },
+        "maxTokens": {
+          "title": "Maximaal aantal uitvoertokens",
+          "description": "Het maximale aantal tokens dat het model voor één transcriptie mag uitvoeren, inclusief nadenken. Een antwoord dat de limiet bereikt wordt afgekapt, en Handy gooit het weg in plaats van een onvolledige transcriptie te plakken. Elk model heeft zijn eigen maximum: een hogere waarde laat het verzoek mislukken."
         }
       },
       "prompts": {

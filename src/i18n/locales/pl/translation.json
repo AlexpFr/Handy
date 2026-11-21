@@ -666,6 +666,32 @@
           "placeholderWithOptions": "Wyszukaj lub wybierz model",
           "placeholderNoOptions": "Wpisz nazwę modelu",
           "refreshModels": "Odśwież modele"
+        },
+        "thinking": {
+          "title": "Myślenie",
+          "description": "Określa, czy model myśli przed udzieleniem odpowiedzi i ile wysiłku w to wkłada. „Domyślne modelu” o nic nie prosi. Myślenie dodaje opóźnienie i koszt, a porządkowanie transkrypcji rzadko go wymaga. Nie każdy model przyjmuje każdą wartość: jeśli model ją odrzuci, żądanie się nie powiedzie.",
+          "options": {
+            "default": "Domyślne modelu",
+            "off": "Wyłączone",
+            "low": "Niskie",
+            "medium": "Średnie",
+            "high": "Wysokie",
+            "xhigh": "Bardzo wysokie",
+            "max": "Maksymalne"
+          }
+        },
+        "promptCache": {
+          "title": "Pamięć podręczna promptu",
+          "description": "Prosi dostawcę o przechowywanie instrukcji promptu w pamięci podręcznej przez ten czas. Buforowany jest tylko prompt bez ${output}. Buforowanie kosztuje więcej niż jednorazowe wysłanie instrukcji, i tym więcej, im dłużej trwa: opłaca się tylko wtedy, gdy transkrypcje następują krótko po sobie.",
+          "options": {
+            "off": "Wyłączona",
+            "fiveMinutes": "5 minut",
+            "oneHour": "1 godzina"
+          }
+        },
+        "maxTokens": {
+          "title": "Maks. liczba tokenów wyjściowych",
+          "description": "Największa liczba tokenów, jaką model może wygenerować dla jednej transkrypcji, łącznie z myśleniem. Odpowiedź, która osiąga limit, zostaje ucięta, a Handy ją odrzuca, zamiast wklejać niepełną transkrypcję. Każdy model ma własne maksimum: wyższa wartość powoduje niepowodzenie żądania."
         }
       },
       "prompts": {
