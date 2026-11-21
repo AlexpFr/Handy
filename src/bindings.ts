@@ -1154,7 +1154,13 @@ post_process_prompt_cache?: PostProcessPromptCache;
  * which leaves several recent models thinking. A value the model
  * refuses fails the request.
  */
-post_process_thinking?: PostProcessThinking; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
+post_process_thinking?: PostProcessThinking; 
+/**
+ * Only Anthropic-format requests carry it: the format requires one. The
+ * model's thinking counts toward it.
+ * No UI yet: set it by hand in the settings file.
+ */
+post_process_max_tokens?: number; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**
  * Experimental, macOS only: move a Bluetooth headset (AirPods) to this
  * Mac while recording, so its microphone does not return silence while

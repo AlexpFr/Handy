@@ -1,5 +1,6 @@
 use crate::settings::{
     PostProcessApiFormat, PostProcessPromptCache, PostProcessProvider, PostProcessThinking,
+    DEFAULT_POST_PROCESS_MAX_TOKENS,
 };
 use log::{debug, error, info};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
@@ -139,13 +140,10 @@ struct ChatMessageResponse {
     content: Option<String>,
 }
 
-/// Output budget for Anthropic Messages requests, where `max_tokens` is
-/// required. Ample for a cleaned-up dictation.
-const ANTHROPIC_MAX_TOKENS: u32 = 4096;
-
 #[derive(Debug, Serialize)]
 struct AnthropicMessagesRequest {
     model: String,
+    /// Required by the Messages API. A model's thinking counts toward it.
     max_tokens: u32,
     /// The Messages API takes the system prompt here: it rejects a `system`
     /// role in `messages`. See `anthropic_system` for its two shapes.
@@ -157,12 +155,24 @@ struct AnthropicMessagesRequest {
 }
 
 /// The user's settings that only Anthropic-format requests carry.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct AnthropicOptions {
     /// How long to cache the system prompt.
     pub system_prompt_cache: PostProcessPromptCache,
     /// Whether the model thinks, and how hard.
     pub thinking: PostProcessThinking,
+    /// The most tokens the model may put out.
+    pub max_tokens: u32,
+}
+
+impl Default for AnthropicOptions {
+    fn default() -> Self {
+        Self {
+            system_prompt_cache: PostProcessPromptCache::default(),
+            thinking: PostProcessThinking::default(),
+            max_tokens: DEFAULT_POST_PROCESS_MAX_TOKENS,
+        }
+    }
 }
 
 /// Request fields that set a model's thinking in the Anthropic format: one to
@@ -651,6 +661,7 @@ async fn send_anthropic_message(
     let AnthropicOptions {
         system_prompt_cache,
         thinking,
+        max_tokens,
     } = options;
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
 
@@ -661,7 +672,7 @@ async fn send_anthropic_message(
 
     let request_body = AnthropicMessagesRequest {
         model: model.to_string(),
-        max_tokens: ANTHROPIC_MAX_TOKENS,
+        max_tokens,
         system: system_prompt.map(|system| anthropic_system(system, system_prompt_cache)),
         messages: vec![ChatMessage {
             role: "user".to_string(),
@@ -701,11 +712,12 @@ async fn send_anthropic_message(
         .map_err(|e| report_reqwest_error("Failed to parse API response", &e))?;
 
     // A response cut off at the token budget is incomplete; pasting it would
-    // silently drop the end of the dictation.
+    // silently drop the end of the dictation. The error names the setting,
+    // which is the user's only way to give the model more room.
     if message.stop_reason.as_deref() == Some("max_tokens") {
         return Err(format!(
-            "Response was truncated at the {} token limit",
-            ANTHROPIC_MAX_TOKENS
+            "Response was truncated at the {} token limit (post_process_max_tokens)",
+            max_tokens
         ));
     }
 
@@ -1013,7 +1025,7 @@ mod tests {
     fn anthropic_request_carries_required_max_tokens() {
         let request = AnthropicMessagesRequest {
             model: "claude-haiku".to_string(),
-            max_tokens: ANTHROPIC_MAX_TOKENS,
+            max_tokens: DEFAULT_POST_PROCESS_MAX_TOKENS,
             system: None,
             messages: vec![ChatMessage {
                 role: "user".to_string(),
@@ -1022,7 +1034,7 @@ mod tests {
             thinking: AnthropicThinkingParams::default(),
         };
         let json = serde_json::to_value(&request).unwrap();
-        assert_eq!(json["max_tokens"], ANTHROPIC_MAX_TOKENS);
+        assert_eq!(json["max_tokens"], DEFAULT_POST_PROCESS_MAX_TOKENS);
         assert_eq!(json["messages"][0]["role"], "user");
         assert!(json.get("system").is_none());
         assert!(json.get("stream").is_none());

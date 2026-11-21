@@ -445,6 +445,7 @@ async fn post_process_transcription(
         crate::llm_client::AnthropicOptions {
             system_prompt_cache: settings.post_process_prompt_cache,
             thinking: settings.post_process_thinking,
+            max_tokens: settings.post_process_max_tokens,
         },
         disable_reasoning,
     )
