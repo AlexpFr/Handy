@@ -176,12 +176,15 @@ fn build_system_prompt(prompt_template: &str) -> String {
 /// output. A prompt with `${output}` goes out as a single message, with the
 /// transcription in its place. A prompt without it holds only instructions,
 /// so it goes out as the system prompt, and the transcription as the user
-/// message.
-fn unstructured_messages(prompt: &str, transcription: &str) -> (String, Option<String>) {
+/// message, inside `tag` (see `build_transcription_message`).
+fn unstructured_messages(prompt: &str, transcription: &str, tag: &str) -> (String, Option<String>) {
     if prompt.contains(OUTPUT_PLACEHOLDER) {
         (prompt.replace(OUTPUT_PLACEHOLDER, transcription), None)
     } else {
-        (transcription.to_string(), Some(build_system_prompt(prompt)))
+        (
+            build_transcription_message(transcription, tag),
+            Some(build_system_prompt(prompt)),
+        )
     }
 }
 
@@ -497,7 +500,11 @@ async fn post_process_transcription(
 
     // Legacy mode: no structured output, so the prompt says where the
     // transcription goes (see `unstructured_messages`).
-    let (user_content, system_prompt) = unstructured_messages(&prompt, transcription);
+    let (user_content, system_prompt) = unstructured_messages(
+        &prompt,
+        transcription,
+        &settings.post_process_transcription_tag,
+    );
     debug!("Processed prompt length: {} chars", user_content.len());
     run.request_options = Some(sent_request_options(settings, &provider, false));
 
@@ -1373,7 +1380,7 @@ mod tests {
     #[test]
     fn prompt_without_output_sends_the_transcription_apart() {
         assert_eq!(
-            unstructured_messages("Fix the punctuation.", "hello"),
+            unstructured_messages("Fix the punctuation.", "hello", ""),
             (
                 "hello".to_string(),
                 Some("Fix the punctuation.".to_string())
@@ -1384,7 +1391,7 @@ mod tests {
     #[test]
     fn prompt_with_output_is_sent_as_one_message_holding_the_transcription() {
         assert_eq!(
-            unstructured_messages("Fix the punctuation of: ${output}", "hello"),
+            unstructured_messages("Fix the punctuation of: ${output}", "hello", ""),
             ("Fix the punctuation of: hello".to_string(), None)
         );
     }
