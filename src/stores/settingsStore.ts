@@ -168,6 +168,8 @@ const settingUpdaters: {
     commands.changePostProcessEnabledSetting(value as boolean),
   post_process_selected_prompt_id: (value) =>
     commands.setPostProcessSelectedPrompt(value as string),
+  post_process_transcription_tag: (value) =>
+    commands.changePostProcessTranscriptionTagSetting(value as string),
   post_process_prompt_cache: (value) =>
     commands.changePostProcessPromptCacheSetting(
       value as PostProcessPromptCache,

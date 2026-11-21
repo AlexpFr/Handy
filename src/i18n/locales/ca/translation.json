@@ -713,7 +713,12 @@
         "createPrompt": "Creeu la indicació",
         "cancel": "Cancel·leu",
         "selectToEdit": "Seleccioneu una indicació more amunt per veure'n i editar-ne els detalls.",
-        "createFirst": "Feu clic a «Creeu una indicació nova» més amunt per crear la primera indicació de postprocessament."
+        "createFirst": "Feu clic a «Creeu una indicació nova» més amunt per crear la primera indicació de postprocessament.",
+        "transcriptionTag": {
+          "title": "Etiqueta de transcripció",
+          "description": "Nom d'una etiqueta amb què embolcallar la transcripció quan Handy l'envia a part de la indicació: transcript envia <transcript>…</transcript>. Evita que el model respongui a una transcripció en lloc de netejar-la. Deixeu-ho buit per no afegir res.",
+          "placeholder": "Sense etiqueta"
+        }
       }
     },
     "history": {

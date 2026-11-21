@@ -296,6 +296,54 @@ const AnthropicRequestSettings: React.FC = () => {
   );
 };
 
+const PostProcessingSettingsTranscriptionTag: React.FC = () => {
+  const { t } = useTranslation();
+  const { getSetting, updateSetting, isUpdating } = useSettings();
+  const tag = getSetting("post_process_transcription_tag") ?? "";
+  const [draft, setDraft] = useState(tag);
+
+  useEffect(() => {
+    setDraft(tag);
+  }, [tag]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== tag) {
+      updateSetting("post_process_transcription_tag", trimmed);
+    } else {
+      setDraft(tag);
+    }
+  };
+
+  return (
+    <SettingContainer
+      title={t("settings.postProcessing.prompts.transcriptionTag.title")}
+      description={t(
+        "settings.postProcessing.prompts.transcriptionTag.description",
+      )}
+      descriptionMode="tooltip"
+      layout="horizontal"
+      grouped={true}
+    >
+      <Input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+        placeholder={t(
+          "settings.postProcessing.prompts.transcriptionTag.placeholder",
+        )}
+        variant="compact"
+        disabled={isUpdating("post_process_transcription_tag")}
+        className="w-[200px]"
+      />
+    </SettingContainer>
+  );
+};
+
 const PostProcessingSettingsPromptsComponent: React.FC = () => {
   const { t } = useTranslation();
   const { getSetting, updateSetting, isUpdating, refreshSettings } =
@@ -596,6 +644,7 @@ export const PostProcessingSettings: React.FC = () => {
 
       <SettingsGroup title={t("settings.postProcessing.prompts.title")}>
         <PostProcessingSettingsPrompts />
+        <PostProcessingSettingsTranscriptionTag />
       </SettingsGroup>
     </div>
   );

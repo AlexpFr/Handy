@@ -529,6 +529,13 @@ pub struct AppSettings {
     pub post_process_prompts: Vec<LLMPrompt>,
     #[serde(default)]
     pub post_process_selected_prompt_id: Option<String>,
+    /// Tag put around the transcription when it is sent as a message of its
+    /// own, apart from the prompt: `transcript` sends
+    /// `<transcript>…</transcript>`. Used as written; empty adds none.
+    /// Structured output always sends it apart, even when the prompt has
+    /// `${output}`.
+    #[serde(default)]
+    pub post_process_transcription_tag: String,
     /// Asks the provider to cache the prompt's instructions. Only a prompt
     /// without `${output}` is cached, since it goes out as the system
     /// prompt, and only Anthropic-format requests ask for it.
@@ -1104,6 +1111,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_models: default_post_process_models(),
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: None,
+        post_process_transcription_tag: String::new(),
         post_process_prompt_cache: PostProcessPromptCache::Off,
         post_process_thinking: PostProcessThinking::Default,
         post_process_max_tokens: default_post_process_max_tokens(),

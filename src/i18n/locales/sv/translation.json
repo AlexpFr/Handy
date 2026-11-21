@@ -713,7 +713,12 @@
         "createPrompt": "Skapa prompt",
         "cancel": "Avbryt",
         "selectToEdit": "Välj en prompt ovan för att visa och redigera dess detaljer.",
-        "createFirst": "Klicka på 'Skapa ny prompt' ovan för att skapa din första prompt för efterbearbetning."
+        "createFirst": "Klicka på 'Skapa ny prompt' ovan för att skapa din första prompt för efterbearbetning.",
+        "transcriptionTag": {
+          "title": "Transkriptionstagg",
+          "description": "Namn på en tagg att omge transkriptionen med när Handy skickar den skild från prompten: transcript skickar <transcript>…</transcript>. Det hindrar modellen från att svara på en transkription i stället för att städa upp den. Lämna tomt för att inte lägga till något.",
+          "placeholder": "Ingen tagg"
+        }
       }
     },
     "history": {

@@ -713,7 +713,12 @@
         "createPrompt": "Vytvořit prompt",
         "cancel": "Zrušit",
         "selectToEdit": "Vyberte výše prompt, abyste zobrazili a upravili jeho podrobnosti.",
-        "createFirst": "Klikněte nahoře na 'Vytvořit nový prompt' a vytvořte svůj první prompt pro následné zpracování."
+        "createFirst": "Klikněte nahoře na 'Vytvořit nový prompt' a vytvořte svůj první prompt pro následné zpracování.",
+        "transcriptionTag": {
+          "title": "Značka přepisu",
+          "description": "Název značky, kterou se obalí přepis, když ho Handy posílá odděleně od promptu: transcript odešle <transcript>…</transcript>. Model tak na přepis neodpovídá, místo aby ho upravil. Nechte prázdné, pokud nechcete nic přidávat.",
+          "placeholder": "Žádná značka"
+        }
       }
     },
     "history": {

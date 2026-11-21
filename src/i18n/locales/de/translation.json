@@ -713,7 +713,12 @@
         "createPrompt": "Prompt erstellen",
         "cancel": "Abbrechen",
         "selectToEdit": "Wähle oben einen Prompt aus, um dessen Details anzuzeigen und zu bearbeiten.",
-        "createFirst": "Klicke oben auf 'Neuen Prompt erstellen', um deinen ersten Nachbearbeitungs-Prompt zu erstellen."
+        "createFirst": "Klicke oben auf 'Neuen Prompt erstellen', um deinen ersten Nachbearbeitungs-Prompt zu erstellen.",
+        "transcriptionTag": {
+          "title": "Transkriptions-Tag",
+          "description": "Name eines Tags, das die Transkription umschließt, wenn Handy sie getrennt vom Prompt sendet: transcript sendet <transcript>…</transcript>. So beantwortet das Modell eine Transkription nicht, statt sie zu bereinigen. Leer lassen, um nichts hinzuzufügen.",
+          "placeholder": "Kein Tag"
+        }
       }
     },
     "history": {

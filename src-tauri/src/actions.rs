@@ -185,6 +185,17 @@ fn unstructured_messages(prompt: &str, transcription: &str) -> (String, Option<S
     }
 }
 
+/// The transcription as a message of its own, apart from the prompt. Sent
+/// bare, the model can take it as addressed to it and answer a question in it
+/// instead of cleaning it, so the user can name a tag to put around it.
+fn build_transcription_message(transcription: &str, tag: &str) -> String {
+    if tag.is_empty() {
+        transcription.to_string()
+    } else {
+        format!("<{tag}>{transcription}</{tag}>")
+    }
+}
+
 /// Returns `true` when a transcription has no meaningful content to
 /// post-process (empty or whitespace-only). Used to skip the post-processing
 /// LLM call when nothing was actually transcribed, which would otherwise make
@@ -366,7 +377,8 @@ async fn post_process_transcription(
         debug!("Using structured outputs for provider '{}'", provider.id);
 
         let system_prompt = build_system_prompt(&prompt);
-        let user_content = transcription.to_string();
+        let user_content =
+            build_transcription_message(transcription, &settings.post_process_transcription_tag);
 
         // Handle Apple Intelligence separately since it uses native Swift APIs
         if provider.id == APPLE_INTELLIGENCE_PROVIDER_ID {
@@ -1240,9 +1252,10 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
 #[cfg(test)]
 mod tests {
     use super::{
-        complete_unless_cancelled, is_blank_transcription, non_blank_post_processed_text,
-        post_process_transcription, should_use_streaming_overlay, strip_invisible_chars,
-        strip_think_block, unstructured_messages, PostProcessOutcome, PostProcessRun,
+        build_transcription_message, complete_unless_cancelled, is_blank_transcription,
+        non_blank_post_processed_text, post_process_transcription, should_use_streaming_overlay,
+        strip_invisible_chars, strip_think_block, unstructured_messages, PostProcessOutcome,
+        PostProcessRun,
     };
     use crate::settings::{get_default_settings, AppSettings, OverlayStyle};
     use std::future;
@@ -1374,6 +1387,15 @@ mod tests {
             unstructured_messages("Fix the punctuation of: ${output}", "hello"),
             ("Fix the punctuation of: hello".to_string(), None)
         );
+    }
+
+    #[test]
+    fn transcription_sent_apart_is_wrapped_in_the_tag_when_one_is_set() {
+        assert_eq!(
+            build_transcription_message("hello", "transcript"),
+            "<transcript>hello</transcript>"
+        );
+        assert_eq!(build_transcription_message("hello", ""), "hello");
     }
 
     #[test]

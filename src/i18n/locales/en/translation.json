@@ -713,7 +713,12 @@
         "createPrompt": "Create Prompt",
         "cancel": "Cancel",
         "selectToEdit": "Select a prompt above to view and edit its details.",
-        "createFirst": "Click 'Create New Prompt' above to create your first post-processing prompt."
+        "createFirst": "Click 'Create New Prompt' above to create your first post-processing prompt.",
+        "transcriptionTag": {
+          "title": "Transcription Tag",
+          "description": "Name of a tag to wrap the transcription in when Handy sends it apart from the prompt: transcript sends <transcript>…</transcript>. It keeps the model from answering a transcription instead of cleaning it up. Leave empty to add nothing.",
+          "placeholder": "No tag"
+        }
       }
     },
     "history": {

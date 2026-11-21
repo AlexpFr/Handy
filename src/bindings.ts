@@ -336,6 +336,14 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessTranscriptionTagSetting(tag: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_transcription_tag_setting", { tag }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async changePostProcessPromptCacheSetting(cache: PostProcessPromptCache) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("change_post_process_prompt_cache_setting", { cache }) };
@@ -1151,6 +1159,14 @@ selected_channel?: number | null; clamshell_microphone?: string | null; selected
  * picked during onboarding. Empty until then.
  */
 spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: boolean; log_level?: LogLevel; custom_words?: string[]; model_unload_timeout?: ModelUnloadTimeout; word_correction_threshold?: number; history_limit?: number; recording_retention_period?: RecordingRetentionPeriod; paste_method?: PasteMethod; clipboard_handling?: ClipboardHandling; auto_submit?: boolean; auto_submit_key?: AutoSubmitKey; post_process_enabled?: boolean; post_process_provider_id?: string; post_process_providers?: PostProcessProvider[]; post_process_api_keys?: SecretMap; post_process_models?: Partial<{ [key in string]: string }>; post_process_prompts?: LLMPrompt[]; post_process_selected_prompt_id?: string | null; 
+/**
+ * Tag put around the transcription when it is sent as a message of its
+ * own, apart from the prompt: `transcript` sends
+ * `<transcript>…</transcript>`. Used as written; empty adds none.
+ * Structured output always sends it apart, even when the prompt has
+ * `${output}`.
+ */
+post_process_transcription_tag?: string; 
 /**
  * Asks the provider to cache the prompt's instructions. Only a prompt
  * without `${output}` is cached, since it goes out as the system
