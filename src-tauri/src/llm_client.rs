@@ -1052,6 +1052,33 @@ mod tests {
     }
 
     #[test]
+    fn anthropic_request_asks_for_the_thinking_the_user_set() {
+        let added_fields =
+            |thinking| serde_json::to_value(anthropic_thinking_params(thinking)).unwrap();
+
+        assert_eq!(
+            added_fields(PostProcessThinking::Default),
+            serde_json::json!({})
+        );
+        assert_eq!(
+            added_fields(PostProcessThinking::Off),
+            serde_json::json!({ "thinking": { "type": "disabled" } })
+        );
+        for (thinking, effort) in [
+            (PostProcessThinking::Low, "low"),
+            (PostProcessThinking::Medium, "medium"),
+            (PostProcessThinking::High, "high"),
+            (PostProcessThinking::XHigh, "xhigh"),
+            (PostProcessThinking::Max, "max"),
+        ] {
+            assert_eq!(
+                added_fields(thinking),
+                serde_json::json!({ "output_config": { "effort": effort } })
+            );
+        }
+    }
+
+    #[test]
     fn anthropic_response_keeps_only_text_blocks() {
         let response: AnthropicMessagesResponse = serde_json::from_str(
             r#"{"content":[{"type":"thinking","thinking":"hmm"},{"type":"text","text":"Hello"},{"type":"text","text":" world"}]}"#,
