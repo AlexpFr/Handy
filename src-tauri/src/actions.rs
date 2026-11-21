@@ -1397,6 +1397,22 @@ mod tests {
     }
 
     #[test]
+    fn transcription_sent_apart_without_structured_output_is_wrapped_in_the_tag() {
+        assert_eq!(
+            unstructured_messages("Fix the punctuation.", "hello", "transcript"),
+            (
+                "<transcript>hello</transcript>".to_string(),
+                Some("Fix the punctuation.".to_string())
+            )
+        );
+        // A prompt with ${output} places the transcription itself: no tag.
+        assert_eq!(
+            unstructured_messages("Fix the punctuation of: ${output}", "hello", "transcript"),
+            ("Fix the punctuation of: hello".to_string(), None)
+        );
+    }
+
+    #[test]
     fn transcription_sent_apart_is_wrapped_in_the_tag_when_one_is_set() {
         assert_eq!(
             build_transcription_message("hello", "transcript"),
