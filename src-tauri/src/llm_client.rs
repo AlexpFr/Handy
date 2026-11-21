@@ -145,6 +145,10 @@ const ANTHROPIC_MAX_TOKENS: u32 = 4096;
 struct AnthropicMessagesRequest {
     model: String,
     max_tokens: u32,
+    /// The Messages API takes the system prompt here: it rejects a `system`
+    /// role in `messages`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    system: Option<String>,
     messages: Vec<ChatMessage>,
 }
 
@@ -371,26 +375,29 @@ fn report_reqwest_error(context: &str, error: &reqwest::Error) -> String {
     details
 }
 
-/// Send a chat completion request to an OpenAI-compatible API
+/// Send a chat completion request in the provider's API format.
+/// `system_prompt`, when provided, is sent apart from `user_content`, the way
+/// each format takes a system prompt.
 /// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
 /// or Err on actual errors (HTTP, parsing, etc.)
 pub async fn send_chat_completion(
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
-    prompt: String,
+    user_content: String,
+    system_prompt: Option<String>,
     disable_reasoning: bool,
 ) -> Result<Option<String>, String> {
     if provider.api_format == PostProcessApiFormat::Anthropic {
-        return send_anthropic_message(provider, api_key, model, prompt).await;
+        return send_anthropic_message(provider, api_key, model, user_content, system_prompt).await;
     }
 
     send_chat_completion_with_schema(
         provider,
         api_key,
         model,
-        prompt,
-        None,
+        user_content,
+        system_prompt,
         None,
         disable_reasoning,
     )
@@ -550,7 +557,7 @@ pub async fn send_chat_completion_with_schema(
     Ok(choice.message.content)
 }
 
-/// Send a single-prompt request to an Anthropic Messages API (`/messages`).
+/// Send a request to an Anthropic Messages API (`/messages`).
 /// Used by every provider with the Anthropic format (the built-in Anthropic
 /// provider and a custom provider set to it). None of them use structured
 /// output, and thinking is off unless requested, so no reasoning fields are
@@ -559,7 +566,8 @@ async fn send_anthropic_message(
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
-    prompt: String,
+    user_content: String,
+    system_prompt: Option<String>,
 ) -> Result<Option<String>, String> {
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
 
@@ -571,9 +579,10 @@ async fn send_anthropic_message(
     let request_body = AnthropicMessagesRequest {
         model: model.to_string(),
         max_tokens: ANTHROPIC_MAX_TOKENS,
+        system: system_prompt,
         messages: vec![ChatMessage {
             role: "user".to_string(),
-            content: prompt,
+            content: user_content,
         }],
     };
 
@@ -921,6 +930,7 @@ mod tests {
         let request = AnthropicMessagesRequest {
             model: "claude-haiku".to_string(),
             max_tokens: ANTHROPIC_MAX_TOKENS,
+            system: None,
             messages: vec![ChatMessage {
                 role: "user".to_string(),
                 content: "hi".to_string(),
@@ -957,6 +967,7 @@ mod tests {
             "key".to_string(),
             "claude-haiku",
             "raw text".to_string(),
+            None,
             true,
         )
         .await;
@@ -975,6 +986,7 @@ mod tests {
             "key".to_string(),
             "test-model",
             "raw text".to_string(),
+            None,
             false,
         )
         .await;
@@ -993,6 +1005,7 @@ mod tests {
             "key".to_string(),
             "claude-haiku",
             "raw text".to_string(),
+            None,
             true,
         )
         .await;

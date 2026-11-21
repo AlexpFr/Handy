@@ -157,10 +157,29 @@ fn strip_think_block(s: &str) -> &str {
     s
 }
 
+/// Where a prompt places the transcription itself.
+const OUTPUT_PLACEHOLDER: &str = "${output}";
+
 /// Build a system prompt from the user's prompt template.
 /// Removes `${output}` placeholder since the transcription is sent as the user message.
 fn build_system_prompt(prompt_template: &str) -> String {
-    prompt_template.replace("${output}", "").trim().to_string()
+    prompt_template
+        .replace(OUTPUT_PLACEHOLDER, "")
+        .trim()
+        .to_string()
+}
+
+/// The user message and the system prompt of a request without structured
+/// output. A prompt with `${output}` goes out as a single message, with the
+/// transcription in its place. A prompt without it holds only instructions,
+/// so it goes out as the system prompt, and the transcription as the user
+/// message.
+fn unstructured_messages(prompt: &str, transcription: &str) -> (String, Option<String>) {
+    if prompt.contains(OUTPUT_PLACEHOLDER) {
+        (prompt.replace(OUTPUT_PLACEHOLDER, transcription), None)
+    } else {
+        (transcription.to_string(), Some(build_system_prompt(prompt)))
+    }
 }
 
 /// Returns `true` when a transcription has no meaningful content to
@@ -410,15 +429,17 @@ async fn post_process_transcription(
         }
     }
 
-    // Legacy mode: Replace ${output} variable in the prompt with the actual text
-    let processed_prompt = prompt.replace("${output}", transcription);
-    debug!("Processed prompt length: {} chars", processed_prompt.len());
+    // Legacy mode: no structured output, so the prompt says where the
+    // transcription goes (see `unstructured_messages`).
+    let (user_content, system_prompt) = unstructured_messages(&prompt, transcription);
+    debug!("Processed prompt length: {} chars", user_content.len());
 
     match crate::llm_client::send_chat_completion(
         &provider,
         api_key,
         &model,
-        processed_prompt,
+        user_content,
+        system_prompt,
         disable_reasoning,
     )
     .await
