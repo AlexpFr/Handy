@@ -11,7 +11,8 @@ use crate::managers::transcription::StreamWorkKind;
 use crate::managers::transcription::{Transcription, TranscriptionManager};
 use crate::notices::{self, Notice, NoticeCode, NoticeSource};
 use crate::settings::{
-    get_settings, AppSettings, OverlayStyle, PostProcessProvider, APPLE_INTELLIGENCE_PROVIDER_ID,
+    get_settings, AppSettings, OverlayStyle, PostProcessApiFormat, PostProcessPromptCache,
+    PostProcessProvider, PostProcessThinking, APPLE_INTELLIGENCE_PROVIDER_ID,
 };
 use crate::shortcut;
 use crate::tray::{set_tray_state, TrayIconState};
@@ -208,14 +209,36 @@ fn is_blank_transcription(transcription: &str) -> bool {
     transcription.trim().is_empty()
 }
 
-/// The settings a post-processing request carries, as JSON for the history.
-/// No setting changes the request yet, so it is always empty.
+/// The settings a post-processing request carries, as JSON for the history:
+/// the tag only around a transcription sent apart from the prompt, and the
+/// Anthropic format's own settings only in that format.
 fn sent_request_options(
-    _settings: &AppSettings,
-    _provider: &PostProcessProvider,
-    _transcription_apart: bool,
+    settings: &AppSettings,
+    provider: &PostProcessProvider,
+    transcription_apart: bool,
 ) -> String {
-    let options = serde_json::Map::new();
+    let mut options = serde_json::Map::new();
+    let tag = &settings.post_process_transcription_tag;
+    if transcription_apart && !tag.is_empty() {
+        options.insert("transcription_tag".into(), tag.as_str().into());
+    }
+    if provider.api_format == PostProcessApiFormat::Anthropic {
+        // The cache is asked for on the system prompt only.
+        if transcription_apart && settings.post_process_prompt_cache != PostProcessPromptCache::Off
+        {
+            options.insert(
+                "prompt_cache".into(),
+                serde_json::json!(settings.post_process_prompt_cache),
+            );
+        }
+        if settings.post_process_thinking != PostProcessThinking::Default {
+            options.insert(
+                "thinking".into(),
+                serde_json::json!(settings.post_process_thinking),
+            );
+        }
+        options.insert("max_tokens".into(), settings.post_process_max_tokens.into());
+    }
     serde_json::Value::Object(options).to_string()
 }
 
@@ -506,7 +529,11 @@ async fn post_process_transcription(
         &settings.post_process_transcription_tag,
     );
     debug!("Processed prompt length: {} chars", user_content.len());
-    run.request_options = Some(sent_request_options(settings, &provider, false));
+    run.request_options = Some(sent_request_options(
+        settings,
+        &provider,
+        system_prompt.is_some(),
+    ));
 
     let reply = crate::llm_client::send_chat_completion(
         &provider,
