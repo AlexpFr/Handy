@@ -1,4 +1,6 @@
-use crate::settings::{PostProcessApiFormat, PostProcessPromptCache, PostProcessProvider};
+use crate::settings::{
+    PostProcessApiFormat, PostProcessPromptCache, PostProcessProvider, PostProcessThinking,
+};
 use log::{debug, error, info};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, REFERER, USER_AGENT};
 use serde::{Deserialize, Serialize};
@@ -150,6 +152,52 @@ struct AnthropicMessagesRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     system: Option<Value>,
     messages: Vec<ChatMessage>,
+    #[serde(flatten)]
+    thinking: AnthropicThinkingParams,
+}
+
+/// The user's settings that only Anthropic-format requests carry.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AnthropicOptions {
+    /// How long to cache the system prompt.
+    pub system_prompt_cache: PostProcessPromptCache,
+    /// Whether the model thinks, and how hard.
+    pub thinking: PostProcessThinking,
+}
+
+/// Request fields that set a model's thinking in the Anthropic format: one to
+/// switch it off, another for the effort it puts in. At most one is set per
+/// request (see `anthropic_thinking_params`).
+#[derive(Debug, Serialize, Default, PartialEq)]
+struct AnthropicThinkingParams {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thinking: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    output_config: Option<Value>,
+}
+
+/// `Default` sends neither field. Unlike `reasoning_disable_params`, a value
+/// the model refuses, as some refuse `Off`, is not retried without it: the
+/// user chose it, so the request fails.
+fn anthropic_thinking_params(thinking: PostProcessThinking) -> AnthropicThinkingParams {
+    let effort = match thinking {
+        PostProcessThinking::Default => return AnthropicThinkingParams::default(),
+        PostProcessThinking::Off => {
+            return AnthropicThinkingParams {
+                thinking: Some(serde_json::json!({ "type": "disabled" })),
+                output_config: None,
+            }
+        }
+        PostProcessThinking::Low => "low",
+        PostProcessThinking::Medium => "medium",
+        PostProcessThinking::High => "high",
+        PostProcessThinking::XHigh => "xhigh",
+        PostProcessThinking::Max => "max",
+    };
+    AnthropicThinkingParams {
+        thinking: None,
+        output_config: Some(serde_json::json!({ "effort": effort })),
+    }
 }
 
 /// The `system` field of a Messages request. This format caches only when a
@@ -397,8 +445,8 @@ fn report_reqwest_error(context: &str, error: &reqwest::Error) -> String {
 
 /// Send a chat completion request in the provider's API format.
 /// `system_prompt`, when provided, is sent apart from `user_content`, the way
-/// each format takes a system prompt. `system_prompt_cache` asks the provider
-/// to cache it, in the format that has to be asked (Anthropic).
+/// each format takes a system prompt. `anthropic` is what the user set for
+/// the Anthropic format, and changes no other format's request.
 /// Returns Ok(Some(content)) on success, Ok(None) if response has no content,
 /// or Err on actual errors (HTTP, parsing, etc.)
 pub async fn send_chat_completion(
@@ -407,7 +455,7 @@ pub async fn send_chat_completion(
     model: &str,
     user_content: String,
     system_prompt: Option<String>,
-    system_prompt_cache: PostProcessPromptCache,
+    anthropic: AnthropicOptions,
     disable_reasoning: bool,
 ) -> Result<Option<String>, String> {
     if provider.api_format == PostProcessApiFormat::Anthropic {
@@ -417,7 +465,7 @@ pub async fn send_chat_completion(
             model,
             user_content,
             system_prompt,
-            system_prompt_cache,
+            anthropic,
         )
         .await;
     }
@@ -590,16 +638,20 @@ pub async fn send_chat_completion_with_schema(
 /// Send a request to an Anthropic Messages API (`/messages`).
 /// Used by every provider with the Anthropic format (the built-in Anthropic
 /// provider and a custom provider set to it). None of them use structured
-/// output, and thinking is off unless requested, so no reasoning fields are
-/// needed.
+/// output. Whether a model thinks by default depends on the model, so its
+/// thinking is set only when the user asks (see `anthropic_thinking_params`).
 async fn send_anthropic_message(
     provider: &PostProcessProvider,
     api_key: String,
     model: &str,
     user_content: String,
     system_prompt: Option<String>,
-    system_prompt_cache: PostProcessPromptCache,
+    options: AnthropicOptions,
 ) -> Result<Option<String>, String> {
+    let AnthropicOptions {
+        system_prompt_cache,
+        thinking,
+    } = options;
     let url = format!("{}/messages", provider.base_url.trim_end_matches('/'));
 
     debug!(
@@ -615,6 +667,7 @@ async fn send_anthropic_message(
             role: "user".to_string(),
             content: user_content,
         }],
+        thinking: anthropic_thinking_params(thinking),
     };
 
     let response = create_client(provider, &api_key)?
@@ -966,6 +1019,7 @@ mod tests {
                 role: "user".to_string(),
                 content: "hi".to_string(),
             }],
+            thinking: AnthropicThinkingParams::default(),
         };
         let json = serde_json::to_value(&request).unwrap();
         assert_eq!(json["max_tokens"], ANTHROPIC_MAX_TOKENS);
@@ -1022,7 +1076,7 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
-            PostProcessPromptCache::Off,
+            AnthropicOptions::default(),
             true,
         )
         .await;
@@ -1042,7 +1096,7 @@ mod tests {
             "test-model",
             "raw text".to_string(),
             None,
-            PostProcessPromptCache::Off,
+            AnthropicOptions::default(),
             false,
         )
         .await;
@@ -1062,7 +1116,7 @@ mod tests {
             "claude-haiku",
             "raw text".to_string(),
             None,
-            PostProcessPromptCache::Off,
+            AnthropicOptions::default(),
             true,
         )
         .await;

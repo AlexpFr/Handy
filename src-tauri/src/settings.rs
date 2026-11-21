@@ -121,6 +121,23 @@ pub enum PostProcessPromptCache {
     OneHour,
 }
 
+/// What a provider is asked about its model's thinking. The values are the
+/// ones the Anthropic format takes.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum PostProcessThinking {
+    /// Ask for nothing: the model keeps its own default.
+    #[default]
+    Default,
+    /// Ask the model not to think.
+    Off,
+    Low,
+    Medium,
+    High,
+    XHigh,
+    Max,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct PostProcessProvider {
     pub id: String,
@@ -517,6 +534,12 @@ pub struct AppSettings {
     /// prompt, and only Anthropic-format requests ask for it.
     #[serde(default)]
     pub post_process_prompt_cache: PostProcessPromptCache,
+    /// Only Anthropic-format requests carry it. `default` sends nothing,
+    /// which leaves several recent models thinking. A value the model
+    /// refuses fails the request.
+    /// No UI yet: set it by hand in the settings file.
+    #[serde(default)]
+    pub post_process_thinking: PostProcessThinking,
     #[serde(default)]
     pub mute_while_recording: bool,
     #[serde(default)]
@@ -1071,6 +1094,7 @@ pub fn get_default_settings() -> AppSettings {
         post_process_prompts: default_post_process_prompts(),
         post_process_selected_prompt_id: None,
         post_process_prompt_cache: PostProcessPromptCache::Off,
+        post_process_thinking: PostProcessThinking::Default,
         mute_while_recording: false,
         append_trailing_space: false,
         app_language: default_app_language(),
