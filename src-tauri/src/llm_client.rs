@@ -1298,6 +1298,9 @@ mod tests {
             true,
         )
         .await;
-        assert!(result.unwrap_err().contains("20000 token limit"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("20000 token limit"));
     }
 }
