@@ -177,8 +177,15 @@ const PostProcessingSettingsApiComponent: React.FC = () => {
           </div>
         </SettingContainer>
       )}
+
+      {state.apiFormat === "anthropic" && <AnthropicRequestSettings />}
     </>
   );
+};
+
+/** What only the Anthropic format's requests carry. */
+const AnthropicRequestSettings: React.FC = () => {
+  return <></>;
 };
 
 const PostProcessingSettingsPromptsComponent: React.FC = () => {
