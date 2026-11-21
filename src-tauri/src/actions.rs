@@ -1125,9 +1125,9 @@ pub static ACTION_MAP: Lazy<HashMap<String, Arc<dyn ShortcutAction>>> = Lazy::ne
 #[cfg(test)]
 mod tests {
     use super::{
-        complete_unless_cancelled, is_blank_transcription, non_blank_post_processed_text,
-        post_process_transcription, should_use_streaming_overlay, strip_invisible_chars,
-        strip_think_block, PostProcessOutcome,
+        build_transcription_message, complete_unless_cancelled, is_blank_transcription,
+        non_blank_post_processed_text, post_process_transcription, should_use_streaming_overlay,
+        strip_invisible_chars, strip_think_block, PostProcessOutcome,
     };
     use crate::settings::{get_default_settings, AppSettings, OverlayStyle};
     use std::future;
@@ -1211,6 +1211,15 @@ mod tests {
             run_post_process(&post_process_settings(&url), "hello"),
             PostProcessOutcome::Failed
         );
+    }
+
+    #[test]
+    fn transcription_sent_apart_is_wrapped_in_the_tag_when_one_is_set() {
+        assert_eq!(
+            build_transcription_message("hello", "transcript"),
+            "<transcript>hello</transcript>"
+        );
+        assert_eq!(build_transcription_message("hello", ""), "hello");
     }
 
     #[test]
