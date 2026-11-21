@@ -792,6 +792,10 @@ async fn send_anthropic_message(
         .json()
         .await
         .map_err(|e| report_reqwest_error("Failed to parse API response", &e))?;
+    debug!(
+        "Anthropic Messages usage: {}",
+        message.usage.as_ref().unwrap_or(&Value::Null)
+    );
 
     // A response cut off at the token budget is incomplete; pasting it would
     // silently drop the end of the dictation. The error names the setting,
