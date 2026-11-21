@@ -687,7 +687,12 @@
         "createPrompt": "Créer le prompt",
         "cancel": "Annuler",
         "selectToEdit": "Sélectionnez un prompt ci-dessus pour voir et modifier ses détails.",
-        "createFirst": "Cliquez sur 'Créer un nouveau prompt' ci-dessus pour créer votre premier prompt de post-traitement."
+        "createFirst": "Cliquez sur 'Créer un nouveau prompt' ci-dessus pour créer votre premier prompt de post-traitement.",
+        "transcriptionTag": {
+          "title": "Balise de transcription",
+          "description": "Nom d'une balise dont entourer la transcription quand Handy l'envoie à part du prompt : transcript envoie <transcript>…</transcript>. Elle évite que le modèle réponde à une transcription au lieu de la nettoyer. Laissez vide pour ne rien ajouter.",
+          "placeholder": "Aucune balise"
+        }
       }
     },
     "history": {

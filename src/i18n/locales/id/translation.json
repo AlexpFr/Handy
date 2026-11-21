@@ -687,7 +687,12 @@
         "createPrompt": "Buat Prompt",
         "cancel": "Batal",
         "selectToEdit": "Pilih prompt di atas untuk melihat dan mengedit detailnya.",
-        "createFirst": "Klik 'Buat Prompt Baru' di atas untuk membuat prompt pascaproses pertama Anda."
+        "createFirst": "Klik 'Buat Prompt Baru' di atas untuk membuat prompt pascaproses pertama Anda.",
+        "transcriptionTag": {
+          "title": "Tag Transkripsi",
+          "description": "Nama tag untuk membungkus transkripsi saat Handy mengirimkannya terpisah dari prompt: transcript mengirim <transcript>…</transcript>. Ini mencegah model menjawab transkripsi alih-alih merapikannya. Kosongkan agar tidak menambahkan apa pun.",
+          "placeholder": "Tanpa tag"
+        }
       }
     },
     "history": {

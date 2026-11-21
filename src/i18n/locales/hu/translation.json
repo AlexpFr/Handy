@@ -687,7 +687,12 @@
         "createPrompt": "Prompt létrehozása",
         "cancel": "Mégse",
         "selectToEdit": "Válassz ki fent egy promptot a részleteinek megtekintéséhez és szerkesztéséhez.",
-        "createFirst": "Az első utófeldolgozási promptod létrehozásához kattints fent az „Új prompt létrehozása” gombra."
+        "createFirst": "Az első utófeldolgozási promptod létrehozásához kattints fent az „Új prompt létrehozása” gombra.",
+        "transcriptionTag": {
+          "title": "Átirat címkéje",
+          "description": "Annak a címkének a neve, amely közrefogja az átiratot, amikor a Handy a prompttól külön küldi el: a transcript esetén <transcript>…</transcript> megy el. Így a modell nem válaszol az átiratra ahelyett, hogy megtisztítaná. Hagyd üresen, ha semmit sem szeretnél hozzáadni.",
+          "placeholder": "Nincs címke"
+        }
       }
     },
     "history": {

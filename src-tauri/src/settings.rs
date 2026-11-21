@@ -502,7 +502,6 @@ pub struct AppSettings {
     /// `<transcript>…</transcript>`. Used as written; empty adds none.
     /// Structured output always sends it apart, even when the prompt has
     /// `${output}`.
-    /// No UI yet: set it by hand in the settings file.
     #[serde(default)]
     pub post_process_transcription_tag: String,
     #[serde(default)]

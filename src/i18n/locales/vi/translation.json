@@ -687,7 +687,12 @@
         "createPrompt": "Tạo Prompt",
         "cancel": "Hủy",
         "selectToEdit": "Chọn một prompt ở trên để xem và chỉnh sửa chi tiết.",
-        "createFirst": "Nhấn 'Tạo Prompt mới' ở trên để tạo prompt xử lý sau đầu tiên của bạn."
+        "createFirst": "Nhấn 'Tạo Prompt mới' ở trên để tạo prompt xử lý sau đầu tiên của bạn.",
+        "transcriptionTag": {
+          "title": "Thẻ bản chép lời",
+          "description": "Tên của thẻ dùng để bao quanh bản chép lời khi Handy gửi nó tách khỏi prompt: transcript sẽ gửi <transcript>…</transcript>. Nhờ đó mô hình không trả lời bản chép lời thay vì chỉnh sửa nó. Để trống nếu không muốn thêm gì.",
+          "placeholder": "Không có thẻ"
+        }
       }
     },
     "history": {

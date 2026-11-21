@@ -687,7 +687,12 @@
         "createPrompt": "Opret prompt",
         "cancel": "Annuller",
         "selectToEdit": "Vælg en prompt ovenfor for at se og redigere dens detaljer.",
-        "createFirst": "Klik på 'Opret ny prompt' ovenfor for at oprette din første efterbehandlingsprompt."
+        "createFirst": "Klik på 'Opret ny prompt' ovenfor for at oprette din første efterbehandlingsprompt.",
+        "transcriptionTag": {
+          "title": "Transskriptionstag",
+          "description": "Navn på et tag, der sættes omkring transskriptionen, når Handy sender den adskilt fra prompten: transcript sender <transcript>…</transcript>. Det forhindrer modellen i at svare på en transskription i stedet for at rydde op i den. Lad feltet være tomt for ikke at tilføje noget.",
+          "placeholder": "Intet tag"
+        }
       }
     },
     "history": {

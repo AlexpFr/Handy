@@ -687,7 +687,12 @@
         "createPrompt": "Crea Prompt",
         "cancel": "Annulla",
         "selectToEdit": "Scegli un prompt qui sopra per visualizzare o modificare i dettagli.",
-        "createFirst": "Clicca 'Crea un nuovo prompt' qui sopra per creare il tuo primo prompt di post-elaborazione."
+        "createFirst": "Clicca 'Crea un nuovo prompt' qui sopra per creare il tuo primo prompt di post-elaborazione.",
+        "transcriptionTag": {
+          "title": "Tag della trascrizione",
+          "description": "Nome di un tag in cui racchiudere la trascrizione quando Handy la invia separata dal prompt: transcript invia <transcript>…</transcript>. Evita che il modello risponda a una trascrizione invece di ripulirla. Lascia vuoto per non aggiungere nulla.",
+          "placeholder": "Nessun tag"
+        }
       }
     },
     "history": {

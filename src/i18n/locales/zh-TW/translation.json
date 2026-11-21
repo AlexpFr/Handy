@@ -687,7 +687,12 @@
         "createPrompt": "建立提示詞",
         "cancel": "取消",
         "selectToEdit": "選擇上方的提示詞以檢視和編輯其詳細資訊",
-        "createFirst": "點選上方的「建立新提示詞」來建立您的第一個後處理提示詞"
+        "createFirst": "點選上方的「建立新提示詞」來建立您的第一個後處理提示詞",
+        "transcriptionTag": {
+          "title": "轉錄標籤",
+          "description": "Handy 將轉錄與提示詞分開傳送時，用來包住轉錄的標籤名稱：填寫 transcript 會傳送 <transcript>…</transcript>。這可避免模型回答轉錄內容而不是整理它。留空則不新增任何內容。",
+          "placeholder": "無標籤"
+        }
       }
     },
     "history": {

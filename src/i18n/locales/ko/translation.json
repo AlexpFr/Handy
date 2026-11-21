@@ -687,7 +687,12 @@
         "createPrompt": "프롬프트 만들기",
         "cancel": "취소",
         "selectToEdit": "세부 정보를 보고 편집하려면 위에서 프롬프트를 선택하세요.",
-        "createFirst": "첫 번째 후처리 프롬프트를 만들려면 위의 '새 프롬프트 만들기'를 클릭하세요."
+        "createFirst": "첫 번째 후처리 프롬프트를 만들려면 위의 '새 프롬프트 만들기'를 클릭하세요.",
+        "transcriptionTag": {
+          "title": "변환 텍스트 태그",
+          "description": "Handy가 변환된 텍스트를 프롬프트와 따로 보낼 때 이를 감쌀 태그의 이름입니다. transcript를 입력하면 <transcript>…</transcript>로 전송됩니다. 모델이 텍스트를 다듬는 대신 그 내용에 답하는 것을 막아 줍니다. 비워 두면 아무것도 추가하지 않습니다.",
+          "placeholder": "태그 없음"
+        }
       }
     },
     "history": {

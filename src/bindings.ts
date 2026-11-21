@@ -336,6 +336,14 @@ async setPostProcessSelectedPrompt(id: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async changePostProcessTranscriptionTagSetting(tag: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_post_process_transcription_tag_setting", { tag }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async updateCustomWords(words: string[]) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_custom_words", { words }) };
@@ -1133,7 +1141,6 @@ spoken_languages?: string[]; overlay_position?: OverlayPosition; debug_mode?: bo
  * `<transcript>…</transcript>`. Used as written; empty adds none.
  * Structured output always sends it apart, even when the prompt has
  * `${output}`.
- * No UI yet: set it by hand in the settings file.
  */
 post_process_transcription_tag?: string; mute_while_recording?: boolean; append_trailing_space?: boolean; app_language?: string; theme?: Theme; experimental_enabled?: boolean; lazy_stream_close?: boolean; 
 /**

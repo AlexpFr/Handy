@@ -687,7 +687,12 @@
         "createPrompt": "Prompt Oluştur",
         "cancel": "İptal",
         "selectToEdit": "Ayrıntılarını görüntülemek ve düzenlemek için yukarıdan bir prompt seçin.",
-        "createFirst": "İlk son işlem promptunuzu oluşturmak için yukarıdaki “Yeni Prompt Oluştur” seçeneğine tıklayın."
+        "createFirst": "İlk son işlem promptunuzu oluşturmak için yukarıdaki “Yeni Prompt Oluştur” seçeneğine tıklayın.",
+        "transcriptionTag": {
+          "title": "Transkripsiyon Etiketi",
+          "description": "Handy transkripsiyonu prompttan ayrı gönderdiğinde onu saracak etiketin adı: transcript, <transcript>…</transcript> gönderir. Modelin transkripsiyonu temizlemek yerine yanıtlamasını önler. Hiçbir şey eklememek için boş bırakın.",
+          "placeholder": "Etiket yok"
+        }
       }
     },
     "history": {
