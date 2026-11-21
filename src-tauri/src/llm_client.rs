@@ -1161,4 +1161,27 @@ mod tests {
         .await;
         assert!(result.unwrap_err().contains("truncated"));
     }
+
+    #[tokio::test]
+    async fn anthropic_format_truncation_names_the_limit_the_request_carried() {
+        let base_url = serve_one_response(
+            "200 OK",
+            r#"{"type":"message","stop_reason":"max_tokens","content":[{"type":"text","text":"Cut off"}]}"#,
+        )
+        .await;
+        let result = send_chat_completion(
+            &anthropic_format_provider(&base_url),
+            "key".to_string(),
+            "claude-haiku",
+            "raw text".to_string(),
+            None,
+            AnthropicOptions {
+                max_tokens: 20000,
+                ..Default::default()
+            },
+            true,
+        )
+        .await;
+        assert!(result.unwrap_err().contains("20000 token limit"));
+    }
 }

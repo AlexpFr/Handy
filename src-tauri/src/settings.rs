@@ -1880,6 +1880,12 @@ mod tests {
     }
 
     #[test]
+    fn max_tokens_is_4096_until_set() {
+        let settings: AppSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(settings.post_process_max_tokens, 4096);
+    }
+
+    #[test]
     fn salvage_of_non_object_store_falls_back_to_defaults() {
         for stored in [
             serde_json::json!("corrupt"),
